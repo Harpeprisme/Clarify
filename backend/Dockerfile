@@ -1,22 +1,26 @@
 # Build stage
-FROM node:20-slim AS builder
+FROM node:20 AS builder
 WORKDIR /app
 
-# Install system dependencies needed for Prisma
-RUN apt-get update -y && apt-get install -y openssl openssl ca-certificates
+# Install system dependencies
+RUN apt-get update -y && apt-get install -y openssl ca-certificates
 
+# Install dependencies separately to leverage cache
 COPY package*.json ./
 RUN npm install
-COPY . .
+
+# Copy schema and generate Prisma client BEFORE copying the rest of the code
+# This ensures that local files don't overwrite the correct Linux binaries
+COPY prisma ./prisma/
 RUN npx prisma generate
-# In a real build, you might want to transpile or similar, but for this BE:
-# RUN npm run build (if applicable)
+
+# Copy the rest of the application
+COPY . .
 
 # Production stage
 FROM node:20-slim
 WORKDIR /app
 
-# Install openssl in production stage as well
 RUN apt-get update -y && apt-get install -y openssl ca-certificates
 
 COPY --from=builder /app/package*.json ./
