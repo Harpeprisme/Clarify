@@ -5,16 +5,12 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update -y && apt-get install -y openssl ca-certificates
 
-# Install dependencies separately to leverage cache
+# Copy only dependency files
 COPY package*.json ./
+# prisma generate will run in postinstall
 RUN npm install
 
-# Copy schema and generate Prisma client BEFORE copying the rest of the code
-# This ensures that local files don't overwrite the correct Linux binaries
-COPY prisma ./prisma/
-RUN npx prisma generate
-
-# Copy the rest of the application
+# Copy source and schema
 COPY . .
 
 # Production stage
