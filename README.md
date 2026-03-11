@@ -53,16 +53,32 @@ Clarify n'est pas qu'un simple tableau de bord, il intègre des logiques métier
 
 ---
 
-## 🚀 Déploiement "One-Click"
+## 🚀 Déploiement
 
-Le projet est livré avec une configuration **Docker Compose** complète :
+### 🐳 Docker (Recommandé)
+Le moyen le plus simple : `docker-compose up -d --build`. Tout est pré-configuré.
 
-```bash
-# Lancement de l'application complète
-docker-compose up -d --build
-```
+### 🔼 Vercel (Frontend uniquement)
+Vercel est excellent pour le **frontend**, mais ne peut pas héberger le **backend** car SQLite et les serveurs Express persistants ne sont pas compatibles avec le modèle "Serverless" de Vercel.
 
-L'application sera accessible sur le port **80** (via Nginx) et l'API sur le port **3001**. Le fichier de base de données est persisté via un volume Docker sur l'hôte.
+**Pour déployer le front sur Vercel :**
+1. Importez le projet sur Vercel.
+2. Dans les paramètres du projet, changez le **Root Directory** pour `frontend`.
+3. Ajoutez la variable d'environnement `VITE_API_URL` pointant vers votre backend (ex: `https://votre-api.railway.app/api`).
+4. Vercel détectera automatiquement Vite et déploiera l'interface.
+
+### 🚂 Railway / Render (Backend)
+Pour le backend, utilisez un service qui supporte **Docker** ou **Node.js avec disque persistant**.
+- **Railway** : Importez le dossier `backend`, Railway détectera le Dockerfile et vous permettra de monter un volume pour `dev.db`.
+
+---
+
+## 🔧 Troubleshooting Vercel
+
+Si vous avez une erreur sur Vercel :
+- **"No Build Script Found"** : Assurez-vous d'avoir bien sélectionné le dossier `/frontend` comme "Root Directory" dans Vercel (Settings > General).
+- **Erreurs API (404/500)** : Le frontend Vercel doit pouvoir contacter le backend. Vérifiez que `VITE_API_URL` est bien configurée.
+- **Routage (404 on refresh)** : Le fichier `vercel.json` à la racine gère déjà la redirection vers `index.html` pour les SPAs.
 
 ---
 
