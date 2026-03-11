@@ -95,4 +95,4 @@ C'est parce que Vercel ne reconnaît pas l'email du commit comme appartenant à 
 ## 📜 Licence & Crédits
 
 Propriété de **Harpeprisme**. Conçu avec une obsession pour la clarté financière.
-TEST DEPLOYMENT 2
+TEST DEPLOYMENT 3
