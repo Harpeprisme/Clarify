@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  name         String
+  email        String    @unique
+  passwordHash String?
+  googleId     String?   @unique
+  avatarUrl    String?
+  role         String    @default("READER") // ADMIN | READER
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  budgets      Budget[]
+  accounts     Account[]
+}
+
+model Account {
+  id                  Int           @id @default(autoincrement())
+  name                String
+  type                String        @default("COURANT") // COURANT | LIVRET_A | PEA | AUTRE
+  initialBalance      Float         @default(0)        // Solde réel au jour de la 1ère importation
+  initialBalanceDate  DateTime?                        // Date de référence du solde initial
+  userId              Int?
+  user                User?         @relation(fields: [userId], references: [id])
+  transactions        Transaction[]
+  imports             ImportHistory[]
+  createdAt           DateTime      @default(now())
+}
+
+model Category {
+  id           Int            @id @default(autoincrement())
+  name         String         @unique
+  color        String         @default("#6B7280")
+  icon         String         @default("tag")
+  isDefault    Boolean        @default(false)
+  transactions Transaction[]
+  rules        CategoryRule[]
+  budgets      Budget[]
+}
+
+model CategoryRule {
+  id         Int      @id @default(autoincrement())
+  keyword    String
+  categoryId Int
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  priority   Int      @default(0)
+  createdAt  DateTime @default(now())
+}
+
+model Transaction {
+  id          Int      @id @default(autoincrement())
+  date        DateTime
+  description String
+  amount      Float
+  type        String   // INCOME | EXPENSE | TRANSFER
+  balance     Float?
+  accountId   Int
+  account     Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  categoryId  Int?
+  category    Category? @relation(fields: [categoryId], references: [id])
+  isInternal  Boolean  @default(false)
+  importedAt  DateTime @default(now())
+  notes       String?
+}
+
+model Budget {
+  id         Int      @id @default(autoincrement())
+  amount     Float
+  month      String   // format: YYYY-MM
+  categoryId Int
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  userId     Int?
+  user       User?    @relation(fields: [userId], references: [id])
+  @@unique([categoryId, month, userId])
+}
+
+model ImportHistory {
+  id         Int      @id @default(autoincrement())
+  filename   String
+  accountId  Int
+  account    Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  rowCount   Int
+  importedAt DateTime @default(now())
+}

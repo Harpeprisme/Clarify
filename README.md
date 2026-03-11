@@ -1,0 +1,71 @@
+# Clarify 🏦 ✨
+
+**Clarify** est une application web de gestion financière personnelle "Full-Stack" conçue pour transformer la gestion de vos comptes bancaires en une expérience fluide, sécurisée et visuellement immersive.
+
+---
+
+## 🎨 Design System "Clarify"
+
+L'application utilise une identité visuelle premium pensée pour le confort de lecture et l'impact visuel :
+
+- **Palette Signature** : 
+  - `Deep Oxygen` (#1A2B3C) : Fond sombre et profond.
+  - `Electric Mint` (#2DE1C2) : Couleur d'accentuation (boutons, états actifs).
+  - `Coral Soft` (#FF6B6B) & `Emerald` (#27AE60) : Sémantique pour les dépenses et revenus.
+- **Micro-interactions** :
+  - **Glassmorphism** : Cartes KPIs avec effets de flou (`backdrop-filter: blur(20px)`) et transparences.
+  - **Spline Charts** : Graphiques Recharts utilisant des courbes `monotone` ou `Catmull-Rom` avec remplissage dégradé.
+- **Typographie** : Duo de polices Google Fonts/Fontshare : `Inter` (Haute lisibilité des chiffres) et `Satoshi` (Élégance du texte).
+- **Responsive** : Passage dynamique d'une Sidebar latérale à une "Bottom Navigation Bar" sur mobile.
+
+---
+
+## 🔐 Système d'Authentification & Sécurité
+
+L'architecture de sécurité est conçue pour être à la fois robuste et simple d'utilisation :
+
+- **Hybrid Auth** : Support de l'authentification classique (Email/Mot de passe haché avec `bcryptjs` 12 rounds) et de **Google OAuth 2.0**.
+- **Liaison Intelligente** : Si un utilisateur se connecte avec Google, le système vérifie s'il existe déjà un compte avec cet email pour lier les profils automatiquement.
+- **Sécurité JWT** : Utilisation de JSON Web Tokens avec une validité de 7 jours. Un middleware backend (`src/middleware/auth.js`) protège chaque route API.
+- **Gestion de Profil** : Page dédiée pour changer son nom, son mot de passe, ou supprimer ses données de façon irréversible.
+
+---
+
+## 🧮 Subtilités Fonctionnelles
+
+Clarify n'est pas qu'un simple tableau de bord, il intègre des logiques métier avancées :
+
+- **Filtres Bidirectionnels** : Le store Zustand synchronise en temps réel les filtres de *Type de compte* (Courant, Épargne, Crédit) et les filtres de *Comptes individuels*. Choisir un type sélectionne automatiquement les comptes associés et vice-versa.
+- **Calcul de Solde "Source"** : Lors de l'import, si vous ajustez un solde, le système ne se contente pas d'écraser la valeur ; il calcule dynamiquement le solde initial nécessaire (`initialBalance`) pour que `somme(transactions) + initial = solde visé`.
+- **Détection de Transferts** : Algorithme intelligent qui identifie les flux internes (virements entre vos propres comptes) pour les exclure des calculs de revenus/dépenses réels.
+- **KPIs Cliquables** : Cliquer sur un indicateur (Revenus, Dépenses) filtre instantanément la liste des transactions pour n'afficher que les éléments contribuant à ce chiffre.
+
+---
+
+## 🛠 Architecture Technique
+
+- **Frontend** : React 18, Vite, Zustand (State), Recharts (Data Viz), Axios (Intercepteurs JWT).
+- **Backend** : Node.js, Express, Passport.js (OAuth), JWT.
+- **Base de données** : Prisma ORM avec SQLite (persistant localement).
+- **Containerisation** : 
+  - `Dockerfile (Backend)` : Build multi-étape optimisé.
+  - `Dockerfile (Frontend)` : Servi par Nginx avec configuration `try_files` pour les SPAs et `proxy_pass` pour l'API.
+
+---
+
+## 🚀 Déploiement "One-Click"
+
+Le projet est livré avec une configuration **Docker Compose** complète :
+
+```bash
+# Lancement de l'application complète
+docker-compose up -d --build
+```
+
+L'application sera accessible sur le port **80** (via Nginx) et l'API sur le port **3001**. Le fichier de base de données est persisté via un volume Docker sur l'hôte.
+
+---
+
+## 📜 Licence & Crédits
+
+Propriété de **Harpeprisme**. Conçu avec une obsession pour la clarté financière.
