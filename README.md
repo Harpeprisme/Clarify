@@ -63,11 +63,14 @@ Le moyen le plus simple : `docker-compose up -d --build`. Tout est pré-configur
 ### 🔼 Vercel (Frontend uniquement)
 Vercel est excellent pour le **frontend**, mais ne peut pas héberger le **backend** car SQLite et les serveurs Express persistants ne sont pas compatibles avec le modèle "Serverless" de Vercel.
 
-**Pour déployer le front sur Vercel :**
-1. Importez le projet sur Vercel.
-2. Dans les paramètres du projet, changez le **Root Directory** pour `frontend`.
-3. Ajoutez la variable d'environnement `VITE_API_URL` pointant vers votre backend (ex: `https://votre-api.railway.app/api`).
-4. Vercel détectera automatiquement Vite et déploiera l'interface.
+**Configuration requise pour le Frontend (Vercel) :**
+- **Variable** : `VITE_API_URL` = URL de votre backend (ex: `https://api.votre-projet.railway.app/api`).
+- **Root Directory** : `frontend`.
+
+**Configuration requise pour le Backend (Railway/Render) :**
+- **Variable** : `FRONTEND_URL` = URL de votre site Vercel (ex: `https://clarify.vercel.app`).
+- **Variable** : `BACKEND_URL` = URL de votre backend (ex: `https://api.votre-projet.railway.app`).
+- **Google Cloud Console** : Ajoutez `${BACKEND_URL}/api/auth/google/callback` aux URIs de redirection autorisées.
 
 ### 🚂 Railway / Render (Backend)
 Pour le backend, utilisez un service qui supporte **Docker** ou **Node.js avec disque persistant**.

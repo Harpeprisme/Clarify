@@ -44,10 +44,12 @@ router.post('/', upload.single('file'), async (req, res, next) => {
       return res.status(400).json({ error: 'accountId is required' });
     }
 
-    // Verify account exists
-    const account = await prisma.account.findUnique({ where: { id: accountId } });
+    // Verify account exists AND belongs to user
+    const account = await prisma.account.findFirst({ 
+      where: { id: accountId, userId: req.user.id } 
+    });
     if (!account) {
-      return res.status(404).json({ error: 'Account not found' });
+      return res.status(404).json({ error: 'Compte introuvable ou accès refusé' });
     }
 
     // Parse CSV — pass buffer directly for encoding auto-detection
@@ -75,7 +77,7 @@ router.post('/', upload.single('file'), async (req, res, next) => {
       });
 
       if (!existing) {
-        const category = await categorizeTransaction(row.description, row.amount);
+        const category = await categorizeTransaction(row.description, row.amount, req.user.id);
 
         await prisma.transaction.create({
           data: {
@@ -102,8 +104,8 @@ router.post('/', upload.single('file'), async (req, res, next) => {
       }
     });
 
-    // Detect and flag internal transfers
-    const transfersDetected = await detectInternalTransfers();
+    // Detect and flag internal transfers (scoped to user accounts only)
+    const transfersDetected = await detectInternalTransfers(req.user.id);
 
     // If the user provided a target currentBalance, adjust the account's initialBalance now
     // so that initialBalance + sum(all_transactions) = currentBalance

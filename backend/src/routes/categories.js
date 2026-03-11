@@ -2,10 +2,16 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../config/prisma');
 
-// Get all categories
+// Get all categories (Global defaults OR user-specific)
 router.get('/', async (req, res, next) => {
   try {
     const categories = await prisma.category.findMany({
+      where: {
+        OR: [
+          { userId: null },        // System defaults
+          { userId: req.user.id }  // User-specific
+        ]
+      },
       orderBy: { name: 'asc' }
     });
     res.json(categories);
@@ -26,9 +32,10 @@ router.post('/', async (req, res, next) => {
     const category = await prisma.category.create({
       data: {
         name,
-        color: color || '#6B7280', // Default Gray
+        color: color || '#6B7280',
         icon: icon || 'tag',
-        isDefault: false
+        isDefault: false,
+        userId: req.user.id
       }
     });
 
@@ -44,11 +51,16 @@ router.put('/:id', async (req, res, next) => {
     const id = parseInt(req.params.id);
     const { name, color, icon } = req.body;
     
-    // Check if default category (prevent name changes on defaults)
-    const existing = await prisma.category.findUnique({ where: { id } });
+    // Verify ownership
+    const existing = await prisma.category.findFirst({ 
+      where: { id, userId: req.user.id } 
+    });
     
-    if (existing.isDefault && name && name !== existing.name) {
-      return res.status(403).json({ error: 'Cannot rename default categories' });
+    if (!existing) {
+      // If it's a default category, users can't modify it generally
+      const isDefault = await prisma.category.findFirst({ where: { id, isDefault: true } });
+      if (isDefault) return res.status(403).json({ error: 'Cannot modify default categories' });
+      return res.status(404).json({ error: 'Category not found' });
     }
 
     const category = await prisma.category.update({

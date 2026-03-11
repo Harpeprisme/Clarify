@@ -10,15 +10,12 @@ const router  = express.Router();
 const prisma  = require('../config/prisma');
 
 // ── Shared helper ────────────────────────────────────────────────────────────
-function buildWhere({ startDate, endDate, accountIds }) {
+function buildWhere({ startDate, endDate }) {
   const where = {};
   if (startDate || endDate) {
     where.date = {};
     if (startDate) where.date.gte = new Date(startDate);
     if (endDate)   where.date.lte = new Date(endDate);
-  }
-  if (accountIds && accountIds.length > 0) {
-    where.accountId = { in: accountIds };
   }
   return where;
 }
@@ -32,17 +29,28 @@ function parseAccountIds(req) {
 // ── Expenses by category (Doughnut) ─────────────────────────────────────────
 router.get('/expenses-by-category', async (req, res, next) => {
   try {
-    const { startDate, endDate } = req.query;
-    const accountIds = parseAccountIds(req);
+    const userAccounts = await prisma.account.findMany({
+      where: { userId: req.user.id },
+      select: { id: true }
+    });
+    const userAccountIds = userAccounts.map(a => a.id);
+    const validAccountIds = accountIds.length > 0
+      ? accountIds.filter(id => userAccountIds.includes(id))
+      : userAccountIds;
 
     const where = {
-      ...buildWhere({ startDate, endDate, accountIds }),
+      ...buildWhere({ startDate, endDate }),
+      accountId: { in: validAccountIds },
       type: 'EXPENSE',
       isInternal: false,
     };
 
     const [categories, results] = await Promise.all([
-      prisma.category.findMany(),
+      prisma.category.findMany({
+        where: {
+          OR: [{ userId: req.user.id }, { userId: null }]
+        }
+      }),
       prisma.transaction.groupBy({
         by: ['categoryId'],
         where,
@@ -70,11 +78,18 @@ router.get('/expenses-by-category', async (req, res, next) => {
 // ── Income vs Expenses per month (Bar chart) ─────────────────────────────────
 router.get('/income-vs-expenses', async (req, res, next) => {
   try {
-    const { startDate, endDate } = req.query;
-    const accountIds = parseAccountIds(req);
+    const userAccounts = await prisma.account.findMany({
+      where: { userId: req.user.id },
+      select: { id: true }
+    });
+    const userAccountIds = userAccounts.map(a => a.id);
+    const validAccountIds = accountIds.length > 0
+      ? accountIds.filter(id => userAccountIds.includes(id))
+      : userAccountIds;
 
     const where = {
-      ...buildWhere({ startDate, endDate, accountIds }),
+      ...buildWhere({ startDate, endDate }),
+      accountId: { in: validAccountIds },
       isInternal: false,
     };
 
@@ -103,17 +118,20 @@ router.get('/income-vs-expenses', async (req, res, next) => {
 // ── Balance evolution (Line chart) ───────────────────────────────────────────
 router.get('/balance-evolution', async (req, res, next) => {
   try {
-    const { startDate, endDate } = req.query;
-    const accountIds = parseAccountIds(req);
-
-    // Fetch all transactions for selected accounts (no date filter — need full history)
-    const allWhere = accountIds.length > 0 ? { accountId: { in: accountIds } } : {};
-
-    // Fetch accounts to get initialBalance seed values
-    const accounts = await prisma.account.findMany({
-      where: accountIds.length > 0 ? { id: { in: accountIds } } : {},
+    const userAccounts = await prisma.account.findMany({
+      where: { userId: req.user.id }
     });
-    const initialSeed = accounts.reduce((sum, a) => sum + (a.initialBalance || 0), 0);
+    const userAccountIds = userAccounts.map(a => a.id);
+    const validAccountIds = accountIds.length > 0 
+      ? accountIds.filter(id => userAccountIds.includes(id))
+      : userAccountIds;
+
+    // Fetch transactions for selected accounts belonging to user
+    const allWhere = { accountId: { in: validAccountIds } };
+
+    // Initial balance seed from user's accounts
+    const selectedAccounts = userAccounts.filter(a => validAccountIds.includes(a.id));
+    const initialSeed = selectedAccounts.reduce((sum, a) => sum + (a.initialBalance || 0), 0);
 
     const allTransactions = await prisma.transaction.findMany({
       where: allWhere,

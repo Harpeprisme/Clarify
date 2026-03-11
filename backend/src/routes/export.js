@@ -6,7 +6,11 @@ const { stringify } = require('papaparse');
 // Export all transactions to enriched CSV
 router.get('/', async (req, res, next) => {
   try {
+    // ONLY show user's transactions through their accounts
     const transactions = await prisma.transaction.findMany({
+      where: {
+        account: { userId: req.user.id }
+      },
       orderBy: { date: 'desc' },
       include: {
         account: true,

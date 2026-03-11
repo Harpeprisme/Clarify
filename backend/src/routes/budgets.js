@@ -12,7 +12,7 @@ router.get('/', async (req, res, next) => {
     }
 
     const budgets = await prisma.budget.findMany({
-      where: { month },
+      where: { month, userId: req.user.id },
       include: { category: true }
     });
 
@@ -36,7 +36,7 @@ router.post('/', async (req, res, next) => {
         categoryId_month_userId: {
           categoryId: parseInt(categoryId),
           month,
-          userId: 1 // Default user for now
+          userId: req.user.id
         }
       },
       update: { amount: parseFloat(amount) },
@@ -44,7 +44,7 @@ router.post('/', async (req, res, next) => {
         categoryId: parseInt(categoryId),
         amount: parseFloat(amount),
         month,
-        userId: 1 // Default user for now
+        userId: req.user.id
       },
       include: { category: true }
     });

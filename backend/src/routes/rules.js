@@ -6,6 +6,12 @@ const prisma = require('../config/prisma');
 router.get('/', async (req, res, next) => {
   try {
     const rules = await prisma.categoryRule.findMany({
+      where: {
+        OR: [
+          { userId: null },
+          { userId: req.user.id }
+        ]
+      },
       include: { category: true },
       orderBy: { keyword: 'asc' }
     });
@@ -26,9 +32,10 @@ router.post('/', async (req, res, next) => {
 
     const rule = await prisma.categoryRule.create({
       data: {
-        keyword: keyword.toLowerCase(),
+        keyword: keyword.toLowerCase().trim(),
         categoryId: parseInt(categoryId),
-        priority: priority || 0
+        priority: priority || 0,
+        userId: req.user.id
       },
       include: { category: true }
     });
@@ -43,6 +50,11 @@ router.post('/', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
+    const existing = await prisma.categoryRule.findFirst({
+        where: { id, userId: req.user.id }
+    });
+    if (!existing) return res.status(404).json({ error: 'Règle introuvable' });
+
     await prisma.categoryRule.delete({ where: { id } });
     res.status(204).end();
   } catch (error) {

@@ -5,7 +5,11 @@ const prisma  = require('../config/prisma');
 // ── GET all accounts with their REAL balance (initialBalance + transactions) ──
 router.get('/', async (req, res, next) => {
   try {
-    const accounts = await prisma.account.findMany({ orderBy: { name: 'asc' } });
+    // ONLY show user's accounts
+    const accounts = await prisma.account.findMany({ 
+      where: { userId: req.user.id },
+      orderBy: { name: 'asc' } 
+    });
 
     const accountsWithBalances = await Promise.all(
       accounts.map(async (acc) => {
@@ -16,9 +20,8 @@ router.get('/', async (req, res, next) => {
         const txSum = result._sum.amount || 0;
         return {
           ...acc,
-          // Real balance = seed balance + all transactions
           balance: acc.initialBalance + txSum,
-          txBalance: txSum, // transactions-only sum (useful for debug)
+          txBalance: txSum,
         };
       })
     );
@@ -38,6 +41,7 @@ router.post('/', async (req, res, next) => {
         name,
         type:           type || 'COURANT',
         initialBalance: currentBalance !== undefined && currentBalance !== '' ? parseFloat(currentBalance) : 0,
+        userId:         req.user.id, // Link to current user
       },
     });
 
@@ -45,18 +49,23 @@ router.post('/', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// ── PATCH — update account (name, type, currentBalance) ──
+// ── PATCH — update account ──
 router.patch('/:id', async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const { name, type, currentBalance } = req.body;
+
+    // Verify ownership
+    const existing = await prisma.account.findFirst({
+      where: { id, userId: req.user.id }
+    });
+    if (!existing) return res.status(404).json({ error: 'Compte introuvable' });
 
     const data = {};
     if (name !== undefined) data.name = name;
     if (type !== undefined) data.type = type;
 
     if (currentBalance !== undefined && currentBalance !== '') {
-      // Substract existing tx sum to find the required initialBalance seed
       const txRes = await prisma.transaction.aggregate({
         where: { accountId: id },
         _sum: { amount: true },
@@ -70,19 +79,33 @@ router.patch('/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// ── DELETE account (cascades to transactions) ────────────────────────────────
+// ── DELETE account ──
 router.delete('/:id', async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
+    
+    // Verify ownership
+    const existing = await prisma.account.findFirst({
+        where: { id, userId: req.user.id }
+    });
+    if (!existing) return res.status(404).json({ error: 'Compte introuvable' });
+
     await prisma.account.delete({ where: { id } });
     res.status(204).end();
   } catch (err) { next(err); }
 });
 
-// ── DELETE /accounts/:id/transactions — clear history, keep account ──────────
+// ── DELETE /accounts/:id/transactions — clear history ──
 router.delete('/:id/transactions', async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
+
+    // Verify ownership
+    const existing = await prisma.account.findFirst({
+        where: { id, userId: req.user.id }
+    });
+    if (!existing) return res.status(404).json({ error: 'Compte introuvable' });
+
     const [deleted] = await Promise.all([
       prisma.transaction.deleteMany({ where: { accountId: id } }),
       prisma.importHistory.deleteMany({ where: { accountId: id } }),

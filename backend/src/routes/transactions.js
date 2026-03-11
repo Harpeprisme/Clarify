@@ -14,6 +14,14 @@ router.get('/', async (req, res, next) => {
     } = req.query;
 
     const where = {};
+    
+    // REQUIRE ownership through account
+    const userAccounts = await prisma.account.findMany({
+      where: { userId: req.user.id },
+      select: { id: true }
+    });
+    const userAccountIds = userAccounts.map(a => a.id);
+
     if (startDate || endDate) {
       where.date = {};
       if (startDate) where.date.gte = new Date(startDate);
@@ -21,13 +29,17 @@ router.get('/', async (req, res, next) => {
     }
     if (categoryId) where.categoryId = parseInt(categoryId);
 
-    // Support both accountIds=1,2,3 (new) and accountId=1 (legacy)
+    // Filter by user's accounts
     if (accountIdsParam) {
-      const ids = accountIdsParam.split(',').map(Number).filter(Boolean);
-      if (ids.length === 1) where.accountId = ids[0];
-      else if (ids.length > 1) where.accountId = { in: ids };
+      const requestedIds = accountIdsParam.split(',').map(Number).filter(Boolean);
+      const validIds = requestedIds.filter(id => userAccountIds.includes(id));
+      if (validIds.length === 0) where.accountId = { in: userAccountIds };
+      else where.accountId = { in: validIds };
     } else if (accountId) {
-      where.accountId = parseInt(accountId);
+      const id = parseInt(accountId);
+      where.accountId = userAccountIds.includes(id) ? id : { in: userAccountIds };
+    } else {
+      where.accountId = { in: userAccountIds };
     }
 
     if (minAmount || maxAmount) {
@@ -36,14 +48,8 @@ router.get('/', async (req, res, next) => {
       if (maxAmount) where.amount.lte = parseFloat(maxAmount);
     }
     if (search) where.description = { contains: search };
-    
-    // New KPI filters
-    if (type) {
-      where.type = type;
-    }
-    if (excludeInternal === 'true') {
-      where.isInternal = false;
-    }
+    if (type) where.type = type;
+    if (excludeInternal === 'true') where.isInternal = false;
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const take = parseInt(limit);
@@ -77,6 +83,13 @@ router.post('/', async (req, res, next) => {
     if (!date || !description || amount === undefined || !accountId) {
       return res.status(400).json({ error: 'date, description, amount et accountId sont requis.' });
     }
+
+    // Verify account ownership
+    const account = await prisma.account.findFirst({
+      where: { id: parseInt(accountId), userId: req.user.id }
+    });
+    if (!account) return res.status(403).json({ error: 'Accès au compte refusé' });
+
     const parsedAmount = parseFloat(amount);
     const resolvedType = type || (parsedAmount >= 0 ? 'INCOME' : 'EXPENSE');
 
@@ -86,7 +99,7 @@ router.post('/', async (req, res, next) => {
         description: String(description).trim(),
         amount: parsedAmount,
         type: resolvedType,
-        accountId: parseInt(accountId),
+        accountId: account.id,
         categoryId: categoryId ? parseInt(categoryId) : null,
         notes: notes || null,
       },
@@ -96,11 +109,17 @@ router.post('/', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-// PATCH /api/transactions/:id — update any field
+// PATCH /api/transactions/:id ──
 router.patch('/:id', async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const { date, description, amount, type, accountId, categoryId, notes } = req.body;
+
+    // Verify transaction ownership through account
+    const existingTx = await prisma.transaction.findFirst({
+        where: { id, account: { userId: req.user.id } }
+    });
+    if (!existingTx) return res.status(404).json({ error: 'Transaction introuvable' });
 
     const updateData = {};
     if (date        !== undefined) updateData.date        = new Date(date);
@@ -110,7 +129,14 @@ router.patch('/:id', async (req, res, next) => {
       if (type === undefined) updateData.type = updateData.amount >= 0 ? 'INCOME' : 'EXPENSE';
     }
     if (type        !== undefined) updateData.type        = type;
-    if (accountId   !== undefined) updateData.accountId   = parseInt(accountId);
+    if (accountId   !== undefined) {
+        // Verify NEW account ownership
+        const newAcc = await prisma.account.findFirst({
+            where: { id: parseInt(accountId), userId: req.user.id }
+        });
+        if (!newAcc) return res.status(403).json({ error: 'Accès au nouveau compte refusé' });
+        updateData.accountId = newAcc.id;
+    }
     if (categoryId  !== undefined) updateData.categoryId  = categoryId ? parseInt(categoryId) : null;
     if (notes       !== undefined) updateData.notes       = notes;
 
@@ -127,6 +153,11 @@ router.patch('/:id', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
+    const existingTx = await prisma.transaction.findFirst({
+        where: { id, account: { userId: req.user.id } }
+    });
+    if (!existingTx) return res.status(404).json({ error: 'Transaction introuvable' });
+
     await prisma.transaction.delete({ where: { id } });
     res.status(204).send();
   } catch (error) { next(error); }
