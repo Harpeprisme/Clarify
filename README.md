@@ -77,9 +77,17 @@ Pour le backend, utilisez un service qui supporte **Docker** ou **Node.js avec d
 
 ## 🔧 Troubleshooting Vercel
 
-Si vous avez une erreur sur Vercel :
+Si vous avez l'erreur **"Deployment blocked: no git user associated"** :
+C'est parce que Vercel ne reconnaît pas l'email du commit comme appartenant à votre compte. Sur le plan Hobby, tout commit doit être identifié.
+
+**Solution :**
+1. Allez dans vos **[Paramètres Vercel (Account Settings) > Emails](https://vercel.com/account/emails)**.
+2. Ajoutez l'adresse utilisée pour les commits : **`jujuabergel@gmail.com`**.
+3. **Vérifiez l'email** via le lien envoyé par Vercel.
+4. Une fois l'email vérifié, Vercel pourra associer vos commits à votre compte et le déploiement se débloquera automatiquement au prochain push.
+
 - **"No Build Script Found"** : Assurez-vous d'avoir bien sélectionné le dossier `/frontend` comme "Root Directory" dans Vercel (Settings > General).
-- **Erreurs API (404/500)** : Le frontend Vercel doit pouvoir contacter le backend. Vérifiez que `VITE_API_URL` est bien configurée.
+- **Erreurs API (404/500)** : Le frontend Vercel doit pouvoir contacter le backend. Vérifiez que `VITE_API_URL` est bien configurée avec l'URL de votre serveur Railway/Render.
 - **Routage (404 on refresh)** : Le fichier `vercel.json` à la racine gère déjà la redirection vers `index.html` pour les SPAs.
 
 ---
