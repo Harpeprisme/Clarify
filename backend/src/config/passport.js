@@ -6,7 +6,7 @@ const jwt = require('jsonwebtoken');
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: `http://localhost:${process.env.PORT || 3001}/api/auth/google/callback`,
+  callbackURL: `${process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 3001}`}/api/auth/google/callback`,
   scope: ['profile', 'email']
 }, async (accessToken, refreshToken, profile, done) => {
   try {

@@ -10,15 +10,12 @@ const express = require('express');
 const router  = express.Router();
 const prisma  = require('../config/prisma');
 
-function buildWhere({ startDate, endDate, accountIds }) {
+function buildWhere({ startDate, endDate }) {
   const where = {};
   if (startDate || endDate) {
     where.date = {};
     if (startDate) where.date.gte = new Date(startDate);
     if (endDate)   where.date.lte = new Date(endDate);
-  }
-  if (accountIds && accountIds.length > 0) {
-    where.accountId = { in: accountIds };
   }
   return where;
 }
@@ -31,11 +28,18 @@ function parseAccountIds(req) {
 
 router.get('/', async (req, res, next) => {
   try {
-    const { startDate, endDate } = req.query;
-    const accountIds = parseAccountIds(req);
+    const userAccounts = await prisma.account.findMany({
+      where: { userId: req.user.id },
+      select: { id: true }
+    });
+    const userAccountIds = userAccounts.map(a => a.id);
+    const validAccountIds = accountIds.length > 0 
+      ? accountIds.filter(id => userAccountIds.includes(id))
+      : userAccountIds;
 
     const baseWhere = {
-      ...buildWhere({ startDate, endDate, accountIds }),
+      ...buildWhere({ startDate, endDate }),
+      accountId: { in: validAccountIds },
       type: 'EXPENSE',
       isInternal: false,
     };
@@ -65,7 +69,11 @@ router.get('/', async (req, res, next) => {
         _sum: { amount: true },
         _count: { id: true },
       }),
-      prisma.category.findMany(),
+      prisma.category.findMany({
+        where: {
+          OR: [{ userId: req.user.id }, { userId: null }]
+        }
+      }),
     ]);
 
     const averages = stats

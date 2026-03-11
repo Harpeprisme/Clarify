@@ -19,6 +19,8 @@ model User {
   updatedAt    DateTime  @updatedAt
   budgets      Budget[]
   accounts     Account[]
+  categories   Category[]
+  rules        CategoryRule[]
 }
 
 model Account {
@@ -27,8 +29,8 @@ model Account {
   type                String        @default("COURANT") // COURANT | LIVRET_A | PEA | AUTRE
   initialBalance      Float         @default(0)        // Solde réel au jour de la 1ère importation
   initialBalanceDate  DateTime?                        // Date de référence du solde initial
-  userId              Int?
-  user                User?         @relation(fields: [userId], references: [id])
+  userId              Int
+  user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions        Transaction[]
   imports             ImportHistory[]
   createdAt           DateTime      @default(now())
@@ -36,10 +38,12 @@ model Account {
 
 model Category {
   id           Int            @id @default(autoincrement())
-  name         String         @unique
+  name         String
   color        String         @default("#6B7280")
   icon         String         @default("tag")
   isDefault    Boolean        @default(false)
+  userId       Int?           // null for global defaults, int for custom user categories
+  user         User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions Transaction[]
   rules        CategoryRule[]
   budgets      Budget[]
@@ -50,6 +54,8 @@ model CategoryRule {
   keyword    String
   categoryId Int
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  userId     Int?     // Link to user if it's a personal rule
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   priority   Int      @default(0)
   createdAt  DateTime @default(now())
 }
@@ -76,8 +82,8 @@ model Budget {
   month      String   // format: YYYY-MM
   categoryId Int
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  userId     Int?
-  user       User?    @relation(fields: [userId], references: [id])
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([categoryId, month, userId])
 }
 

@@ -3,10 +3,11 @@ const prisma = require('../config/prisma');
 /**
  * Detect internal transfers (same amount, opposite sign, within 3 days)
  */
-const detectInternalTransfers = async () => {
-  // Find all unassigned transfers
+const detectInternalTransfers = async (userId) => {
+  // Find all unassigned transfers for this user's accounts
   const potentialTransfers = await prisma.transaction.findMany({
     where: {
+      account: { userId },
       type: { in: ['INCOME', 'EXPENSE'] },
       isInternal: false
     },

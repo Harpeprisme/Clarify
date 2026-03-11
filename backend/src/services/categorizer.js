@@ -4,13 +4,22 @@ const prisma = require('../config/prisma');
  * Categorize a transaction based on its description and amount
  * Uses global rules and user-defined rules.
  */
-const categorizeTransaction = async (description, amount) => {
+const categorizeTransaction = async (description, amount, userId) => {
   const descLower = description.toLowerCase();
   
-  // 1. Check custom rules first (highest priority)
+  // 1. Check rules
   const rules = await prisma.categoryRule.findMany({
+    where: {
+        OR: [
+            { userId: null },
+            { userId: userId || null }
+        ]
+    },
     include: { category: true },
-    orderBy: { priority: 'desc' },
+    orderBy: [
+        { userId: 'desc' }, // User rules first
+        { priority: 'desc' }
+    ],
   });
 
   for (const rule of rules) {
