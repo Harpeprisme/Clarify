@@ -5,8 +5,10 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update -y && apt-get install -y openssl ca-certificates
 
-# Copy only dependency files
+# Copy dependency files and prisma schema
 COPY package*.json ./
+COPY prisma ./prisma/
+
 # prisma generate will run in postinstall
 RUN npm install
 
