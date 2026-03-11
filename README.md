@@ -1,5 +1,7 @@
 # Clarify 🏦 ✨
 
+*Dernière mise à jour : 11 Mars 2026*
+
 **Clarify** est une application web de gestion financière personnelle "Full-Stack" conçue pour transformer la gestion de vos comptes bancaires en une expérience fluide, sécurisée et visuellement immersive.
 
 ---
