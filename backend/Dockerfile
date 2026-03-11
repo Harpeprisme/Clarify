@@ -1,6 +1,10 @@
 # Build stage
 FROM node:20-slim AS builder
 WORKDIR /app
+
+# Install system dependencies needed for Prisma
+RUN apt-get update -y && apt-get install -y openssl openssl ca-certificates
+
 COPY package*.json ./
 RUN npm install
 COPY . .
@@ -11,6 +15,10 @@ RUN npx prisma generate
 # Production stage
 FROM node:20-slim
 WORKDIR /app
+
+# Install openssl in production stage as well
+RUN apt-get update -y && apt-get install -y openssl ca-certificates
+
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/src ./src
