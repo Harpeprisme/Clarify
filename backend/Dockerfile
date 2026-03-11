@@ -15,7 +15,7 @@ COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/tsconfig.json ./  # If exists
+COPY --from=builder /app/seed_admin.js ./seed_admin.js
 
 EXPOSE 3001
 CMD ["npm", "start"]
