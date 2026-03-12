@@ -26,25 +26,25 @@ const allowedOrigins = [
   ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(s => s.trim()) : [])
 ].filter(Boolean);
 
-console.log('📡 Origines autorisées par CORS :', allowedOrigins);
+console.log('📡 Origines autorisées par CORS :', allowedOrigins.join(', '));
 
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl)
+  origin: (origin, callback) => {
+    // Si pas d'origine (ex: outil de test), on autorise
     if (!origin) return callback(null, true);
+
+    // Nettoyage de l'origine entrante (enlever le slash final)
+    const cleanOrigin = origin.replace(/\/$/, '');
     
-    const isAllowed = allowedOrigins.some(ao => {
-      // Normalize both for comparison (remove trailing slashes)
-      const normalizedAo = ao.replace(/\/$/, '');
-      const normalizedOrigin = origin.replace(/\/$/, '');
-      return normalizedOrigin === normalizedAo;
-    });
+    // Comparaison avec les origines autorisées (nettoyées également)
+    const isAllowed = allowedOrigins.some(ao => ao.replace(/\/$/, '') === cleanOrigin);
 
     if (isAllowed) {
       callback(null, true);
     } else {
-      console.warn(`⚠️ CORS bloqué pour l'origine : ${origin}`);
-      callback(null, false); // Don't throw error, just don't allow
+      console.warn(`⚠️ CORS REFUSÉ pour : "${origin}"`);
+      console.warn(`   Doit correspondre à l'un de :`, allowedOrigins);
+      callback(null, false);
     }
   },
   credentials: true
