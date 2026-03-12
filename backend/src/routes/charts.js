@@ -64,20 +64,16 @@ router.get('/expenses-by-category', async (req, res, next) => {
       }),
     ]);
 
-    const formatted = results
-      .filter(r => r.categoryId && r._sum.amount)
-      .map(r => {
-        const cat = categories.find(c => c.id === r.categoryId);
-        return {
-          name:  cat?.name  ?? 'Non catégorisé',
-          color: cat?.color ?? '#9CA3AF',
-          value: Math.abs(r._sum.amount),
-        };
-      })
-      .filter(r => r.value > 0)
-      .sort((a, b) => b.value - a.value);
+    const data = results.map(r => {
+      const cat = categories.find(c => c.id === r.categoryId);
+      return {
+        name:  cat ? cat.name : 'Non catégorisé',
+        value: Math.abs(r._sum.amount || 0),
+        color: cat ? cat.color : '#9CA3AF',
+      };
+    }).sort((a, b) => b.value - a.value);
 
-    res.json(formatted);
+    res.json(data);
   } catch (err) { next(err); }
 });
 
