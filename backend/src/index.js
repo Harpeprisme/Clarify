@@ -12,11 +12,8 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // ── 1. Global Logger (MUST BE FIRST) ────────────────────────────────────────
-app.use((req, res, next) => {
-  const origin = req.headers.origin || 'N/A';
-  console.log(`📡 [${req.method}] ${req.url} | Origin: ${origin}`);
-  next();
-});
+// ── 1. Global Logger (PLACEHOLDER - MOVED BELOW) ───────────────────────────
+
 
 // ── 2. CORS Configuration ───────────────────────────────────────────────────
 const allowedOrigins = [
@@ -69,6 +66,14 @@ app.use(session({
 
 app.use(passport.initialize());
 app.use(passport.session());
+
+// ── Logger (after auth) ─────────────────────────────────────────────────────
+app.use((req, res, next) => {
+  const origin = req.headers.origin || 'N/A';
+  const userId = req.user ? req.user.id : 'anonymous';
+  console.log(`📡 [${req.method}] ${req.url} | User: ${userId} | Params: ${JSON.stringify(req.query)} | Origin: ${origin}`);
+  next();
+});
 
 // ── Public Routes (no auth needed) ──────────────────────────────────────────
 app.use('/api/auth', require('./routes/auth'));

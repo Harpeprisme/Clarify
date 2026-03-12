@@ -48,6 +48,9 @@ router.get('/expenses-by-category', async (req, res, next) => {
       isInternal: false,
     };
 
+    console.log(`🔍 [Charts/ExpensesByCat] user: ${req.user.id}, where: ${JSON.stringify(where)}`);
+
+
     const [categories, results] = await Promise.all([
       prisma.category.findMany({
         where: {
@@ -98,6 +101,9 @@ router.get('/income-vs-expenses', async (req, res, next) => {
       accountId: { in: validAccountIds },
       isInternal: false,
     };
+
+    console.log(`🔍 [Charts/IncomeVsExp] user: ${req.user.id}, where: ${JSON.stringify(where)}`);
+
 
     const transactions = await prisma.transaction.findMany({
       where,

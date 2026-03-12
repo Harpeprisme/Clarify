@@ -47,6 +47,9 @@ router.get('/', async (req, res, next) => {
       isInternal: false,
     };
 
+    console.log(`🔍 [Analysis] user: ${req.user.id}, startDate: ${startDate}, endDate: ${endDate}, validAccountIds: ${validAccountIds}`);
+    console.log(`🔍 [Analysis] baseWhere: ${JSON.stringify(baseWhere)}`);
+
     // Top 15 biggest expenses (most negative amount first)
     const bigExpenses = await prisma.transaction.findMany({
       where: baseWhere,

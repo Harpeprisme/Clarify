@@ -33,11 +33,19 @@ router.get('/', async (req, res, next) => {
     const { startDate, endDate } = req.query;
     const accountIds = parseAccountIds(req);
 
-    const periodWhere = buildWhere({ startDate, endDate, accountIds });
-    const accountWhere = accountIds.length > 0 ? { accountId: { in: accountIds } } : {};
+    const userAccounts = await prisma.account.findMany({
+      where: { userId: req.user.id }
+    });
+    const userAccountIds = userAccounts.map(a => a.id);
+    const validAccountIds = accountIds.length > 0
+      ? accountIds.filter(id => userAccountIds.includes(id))
+      : userAccountIds;
 
-    // Fetch accounts (always all) — needed for initialBalance
-    const accounts = await prisma.account.findMany({ orderBy: { name: 'asc' } });
+    const periodWhere = buildWhere({ startDate, endDate, accountIds: validAccountIds });
+    const accountWhere = { accountId: { in: validAccountIds } };
+
+    // If the user has no accounts, we can return early or allow the empty queries to run
+    // For consistency with other routes, we'll let the queries run with validAccountIds = []
 
     const [periodIncome, periodExpense, recentTransactions, txTotalResult] = await Promise.all([
       prisma.transaction.aggregate({
@@ -63,7 +71,7 @@ router.get('/', async (req, res, next) => {
 
     // Per-account all-time balance = initialBalance + sum(tx)
     const accountsWithBalance = await Promise.all(
-      accounts.map(async (acc) => {
+      userAccounts.map(async (acc) => {
         const res = await prisma.transaction.aggregate({
           where: { accountId: acc.id },
           _sum: { amount: true },
@@ -79,11 +87,11 @@ router.get('/', async (req, res, next) => {
       })
     );
 
-    // Sum of initialBalances for selected accounts (or all if none selected)
-    const selectedAccounts = accountIds.length > 0
-      ? accounts.filter(a => accountIds.includes(a.id))
-      : accounts;
-    const sumInitial = selectedAccounts.reduce((s, a) => s + a.initialBalance, 0);
+    // Sum of initialBalances for selected accounts (or all user's accounts if none selected in validAccountIds)
+    const selectedAccountsForInitial = validAccountIds.length > 0
+      ? userAccounts.filter(a => validAccountIds.includes(a.id))
+      : userAccounts;
+    const sumInitial = selectedAccountsForInitial.reduce((s, a) => s + a.initialBalance, 0);
     const txTotal    = txTotalResult._sum.amount || 0;
 
     const income  = periodIncome._sum.amount  || 0;
