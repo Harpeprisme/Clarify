@@ -28,6 +28,9 @@ function parseAccountIds(req) {
 
 router.get('/', async (req, res, next) => {
   try {
+    const { startDate, endDate } = req.query;
+    const accountIds = parseAccountIds(req);
+
     const userAccounts = await prisma.account.findMany({
       where: { userId: req.user.id },
       select: { id: true }

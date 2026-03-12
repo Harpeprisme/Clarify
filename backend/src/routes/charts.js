@@ -29,6 +29,9 @@ function parseAccountIds(req) {
 // ── Expenses by category (Doughnut) ─────────────────────────────────────────
 router.get('/expenses-by-category', async (req, res, next) => {
   try {
+    const { startDate, endDate } = req.query;
+    const accountIds = parseAccountIds(req);
+
     const userAccounts = await prisma.account.findMany({
       where: { userId: req.user.id },
       select: { id: true }
@@ -78,6 +81,9 @@ router.get('/expenses-by-category', async (req, res, next) => {
 // ── Income vs Expenses per month (Bar chart) ─────────────────────────────────
 router.get('/income-vs-expenses', async (req, res, next) => {
   try {
+    const { startDate, endDate } = req.query;
+    const accountIds = parseAccountIds(req);
+
     const userAccounts = await prisma.account.findMany({
       where: { userId: req.user.id },
       select: { id: true }
@@ -118,6 +124,9 @@ router.get('/income-vs-expenses', async (req, res, next) => {
 // ── Balance evolution (Line chart) ───────────────────────────────────────────
 router.get('/balance-evolution', async (req, res, next) => {
   try {
+    const { startDate, endDate } = req.query;
+    const accountIds = parseAccountIds(req);
+
     const userAccounts = await prisma.account.findMany({
       where: { userId: req.user.id }
     });
