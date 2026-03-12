@@ -34,11 +34,11 @@ async function main() {
 
   // 2. Create Default Admin User
   const adminUser = await prisma.user.upsert({
-    where: { email: 'admin@openbank.local' },
+    where: { email: 'admin@clarify.app' },
     update: {},
     create: {
       name: 'Julien (Admin)',
-      email: 'admin@openbank.local',
+      email: 'admin@clarify.app',
       passwordHash: '$2a$10$dummyHashToImplementLater',
       role: 'ADMIN'
     }

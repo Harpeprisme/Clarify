@@ -29,9 +29,9 @@ router.post('/register', async (req, res, next) => {
 
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
-    // First user created is always ADMIN
+    // Force ADMIN role for specific email or first user
     const count = await prisma.user.count();
-    const role  = count === 0 ? 'ADMIN' : 'READER';
+    const role  = (email === 'admin@clarify.app' || count === 0) ? 'ADMIN' : 'READER';
 
     const user = await prisma.user.create({
       data: { name, email, passwordHash, role },

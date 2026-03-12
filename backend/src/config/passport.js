@@ -35,9 +35,13 @@ passport.use(new GoogleStrategy({
           data: { googleId, avatarUrl: avatarUrl || user.avatarUrl }
         });
       } else {
-        // Brand new Google user
+        // Create user with conditional ADMIN role
+        const count = await prisma.user.count();
         user = await prisma.user.create({
-          data: { name, email, googleId, avatarUrl, role: 'ADMIN' }
+          data: { 
+            name, email, googleId, avatarUrl, 
+            role: (email === 'admin@clarify.app' || count === 0) ? 'ADMIN' : 'READER'
+          }
         });
       }
     }
