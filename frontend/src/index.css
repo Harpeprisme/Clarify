@@ -206,6 +206,12 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+/* ── Animations ──────────────────────────────────────────────────────────── */
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.animate-spin { animation: spin 1s linear infinite; }
+.animate-fadein { animation: fadeIn 0.3s ease forwards; }
+
 /* ── Utility classes ─────────────────────────────────────────────────────── */
 .flex { display: flex; }
 .flex-col { display: flex; flex-direction: column; }

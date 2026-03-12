@@ -28,6 +28,10 @@ const Settings = () => {
   const [editBalanceVal, setEditBalanceVal]   = useState('');
   const [balanceSaving, setBalanceSaving]     = useState(false);
 
+  // Re-categorize
+  const [recatLoading, setRecatLoading] = useState(false);
+  const [recatResult, setRecatResult] = useState(null);
+
   const currentUser = useStore(state => state.user) || { name: 'Julien (Admin)', role: 'ADMIN' };
   const accounts = useStore(state => state.accounts);
   const fetchAccountsStore = useStore(state => state.fetchAccounts);
@@ -282,7 +286,44 @@ const Settings = () => {
             </button>
           </Card>
 
-          {/* Auto-categorization Rules */}
+          {/* Re-categorize */}
+          <Card title="🤖 Recatégorisation automatique">
+            <p className="text-muted mb-4 text-sm">
+              Relance le moteur intelligent sur <strong>toutes vos transactions existantes</strong> pour appliquer les nouvelles règles de catégorisation.
+            </p>
+            {recatResult && (
+              <div className="p-3 mb-4 rounded-xl text-sm font-semibold" style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success)' }}>
+                ✅ {recatResult.updated} mise(s) à jour · {recatResult.skipped} inchangée(s) · {recatResult.total} total
+              </div>
+            )}
+            <button
+              className="btn btn-primary px-8 py-3"
+              disabled={recatLoading}
+              onClick={async () => {
+                setRecatLoading(true);
+                setRecatResult(null);
+                try {
+                  const { data } = await api.post('/import/re-categorize');
+                  setRecatResult(data);
+                } catch (err) {
+                  console.error(err);
+                } finally {
+                  setRecatLoading(false);
+                }
+              }}
+            >
+              {recatLoading ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <svg style={{ animation: 'spin 1s linear infinite', width: 18, height: 18 }} fill="none" viewBox="0 0 24 24">
+                    <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 100 16v-4l-3 3 3 3v-4a8 8 0 01-8-8z"/>
+                  </svg>
+                  Analyse en cours…
+                </span>
+              ) : '✨ Recatégoriser tout'}
+            </button>
+          </Card>
+
           <Card title="Règles d'automatisations" style={{ gridColumn: '1 / -1' }}>
             <p className="text-muted mb-6 text-sm">
               Définissez des mots-clés pour classer automatiquement vos transactions lors des futurs imports.

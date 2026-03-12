@@ -136,4 +136,51 @@ router.post('/', upload.single('file'), async (req, res, next) => {
   }
 });
 
+/**
+ * POST /api/import/re-categorize
+ * Re-run the smart categorizer on ALL of the current user's transactions.
+ * Only updates transactions whose category actually changes.
+ */
+router.post('/re-categorize', async (req, res, next) => {
+  try {
+    // Get all user's transactions (across all their accounts)
+    const userAccounts = await prisma.account.findMany({
+      where: { userId: req.user.id },
+      select: { id: true }
+    });
+    const accountIds = userAccounts.map(a => a.id);
+
+    if (accountIds.length === 0) {
+      return res.json({ updated: 0, skipped: 0 });
+    }
+
+    const transactions = await prisma.transaction.findMany({
+      where: { accountId: { in: accountIds } },
+      select: { id: true, description: true, amount: true, categoryId: true }
+    });
+
+    let updated = 0;
+    let skipped = 0;
+
+    for (const tx of transactions) {
+      const newCategory = await categorizeTransaction(tx.description, tx.amount, req.user.id);
+      const newCategoryId = newCategory ? newCategory.id : null;
+
+      if (newCategoryId !== tx.categoryId) {
+        await prisma.transaction.update({
+          where: { id: tx.id },
+          data: { categoryId: newCategoryId }
+        });
+        updated++;
+      } else {
+        skipped++;
+      }
+    }
+
+    res.json({ updated, skipped, total: transactions.length });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;
