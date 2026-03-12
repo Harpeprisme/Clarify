@@ -17,19 +17,32 @@ const AuthCallback = () => {
     const userStr = params.get('user');
     const error = params.get('error');
 
+    console.log('[AuthCallback] URL Params:', { 
+      hasToken: !!token, 
+      hasUser: !!userStr, 
+      error 
+    });
+
     if (error || !token || !userStr) {
+      console.error('[AuthCallback] Missing required authentication data or error present:', error);
       navigate('/login?error=oauth_failed', { replace: true });
       return;
     }
 
     try {
-      const user = JSON.parse(decodeURIComponent(userStr));
+      // The backend already sends user as a JSON string, which is already URI encoded in the redirect.
+      // useSearchParams already decodes the values for us.
+      console.log('[AuthCallback] Attempting to parse user data');
+      const user = JSON.parse(userStr);
+      
+      console.log('[AuthCallback] Success! Setting user and redirecting to dashboard');
       setUser(user, token);
       navigate('/dashboard', { replace: true });
-    } catch {
+    } catch (err) {
+      console.error('[AuthCallback] Failed to parse user data:', err, 'Raw userStr:', userStr);
       navigate('/login?error=oauth_failed', { replace: true });
     }
-  }, []);
+  }, [params, navigate, setUser]);
 
   return (
     <div style={{
