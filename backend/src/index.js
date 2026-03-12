@@ -11,13 +11,6 @@ const { authenticate } = require('./middleware/auth');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// ── Global Logger (For Debugging CORS & Requests) ───────────────────────────
-app.use((req, res, next) => {
-  const origin = req.headers.origin || 'N/A';
-  console.log(`📡 [${new Date().toISOString()}] ${req.method} ${req.url} - Origin: ${origin}`);
-  next();
-});
-
 // ── Middleware ───────────────────────────────────────────────────────────────
 const allowedOrigins = [
   'http://localhost:5173',
@@ -30,25 +23,27 @@ console.log('📡 Origines autorisées par CORS :', allowedOrigins.join(', '));
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Si pas d'origine (ex: outil de test), on autorise
     if (!origin) return callback(null, true);
-
-    // Nettoyage de l'origine entrante (enlever le slash final)
-    const cleanOrigin = origin.replace(/\/$/, '');
-    
-    // Comparaison avec les origines autorisées (nettoyées également)
-    const isAllowed = allowedOrigins.some(ao => ao.replace(/\/$/, '') === cleanOrigin);
+    const cleanOrigin = origin.trim().replace(/\/$/, '');
+    const isAllowed = allowedOrigins.some(ao => ao.trim().replace(/\/$/, '') === cleanOrigin);
 
     if (isAllowed) {
       callback(null, true);
     } else {
       console.warn(`⚠️ CORS REFUSÉ pour : "${origin}"`);
-      console.warn(`   Doit correspondre à l'un de :`, allowedOrigins);
       callback(null, false);
     }
   },
-  credentials: true
+  credentials: true,
+  optionsSuccessStatus: 200 // Some legacy browsers crash on 204
 }));
+
+// ── Global Logger (For Debugging CORS & Requests) ───────────────────────────
+app.use((req, res, next) => {
+  const origin = req.headers.origin || 'N/A';
+  console.log(`📡 [${new Date().toISOString()}] ${req.method} ${req.url} - Origin: ${origin}`);
+  next();
+});
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
