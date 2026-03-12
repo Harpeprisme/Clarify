@@ -11,12 +11,19 @@ const { authenticate } = require('./middleware/auth');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// ── Global Logger (For Debugging CORS & Requests) ───────────────────────────
+app.use((req, res, next) => {
+  const origin = req.headers.origin || 'N/A';
+  console.log(`📡 [${new Date().toISOString()}] ${req.method} ${req.url} - Origin: ${origin}`);
+  next();
+});
+
 // ── Middleware ───────────────────────────────────────────────────────────────
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
   'https://deployclarify.vercel.app',
-  process.env.FRONTEND_URL
+  ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(s => s.trim()) : [])
 ].filter(Boolean);
 
 console.log('📡 Origines autorisées par CORS :', allowedOrigins);
