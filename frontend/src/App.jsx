@@ -1,18 +1,19 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import useStore from './store';
+import api from './api';
 
-import Dashboard   from './pages/Dashboard';
-import Import      from './pages/Import';
+import Dashboard    from './pages/Dashboard';
+import Import       from './pages/Import';
 import Transactions from './pages/Transactions';
-import Charts      from './pages/Charts';
-import Budget      from './pages/Budget';
-import Analysis    from './pages/Analysis';
-import Settings    from './pages/Settings';
-import Profile     from './pages/Profile';
-import Login       from './pages/Login';
-import Register    from './pages/Register';
+import Charts       from './pages/Charts';
+import Budget       from './pages/Budget';
+import Analysis     from './pages/Analysis';
+import Settings     from './pages/Settings';
+import Profile      from './pages/Profile';
+import Login        from './pages/Login';
+import Register     from './pages/Register';
 import AuthCallback from './pages/AuthCallback';
 
 // Real auth guard — redirects to /login if no user token
@@ -30,12 +31,33 @@ const GuestRoute = ({ children }) => {
 };
 
 const App = () => {
+  const setUser = useStore(state => state.setUser);
+
+  // On every app load, refresh the user profile from the server to get fresh role/data.
+  // This fixes stale roles cached in localStorage (e.g. READER → ADMIN).
+  useEffect(() => {
+    const token = localStorage.getItem('openbank_token');
+    if (!token) return;
+    api.get('/auth/me')
+      .then(({ data }) => {
+        // Update store + localStorage with fresh data from DB
+        localStorage.setItem('openbank_user', JSON.stringify(data));
+        setUser(data, token);
+      })
+      .catch(() => {
+        // Token is invalid/expired — clear session
+        localStorage.removeItem('openbank_token');
+        localStorage.removeItem('openbank_user');
+        setUser(null, null);
+      });
+  }, []);
+
   return (
     <BrowserRouter>
       <Routes>
         {/* Auth pages (no layout) */}
-        <Route path="/login"  element={<GuestRoute><Login /></GuestRoute>} />
-        <Route path="/register" element={<GuestRoute><Register /></GuestRoute>} />
+        <Route path="/login"        element={<GuestRoute><Login /></GuestRoute>} />
+        <Route path="/register"     element={<GuestRoute><Register /></GuestRoute>} />
         <Route path="/auth/callback" element={<AuthCallback />} />
 
         {/* Protected pages (with layout) */}
