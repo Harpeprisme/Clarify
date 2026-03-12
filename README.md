@@ -72,14 +72,15 @@ Vercel est excellent pour le **frontend**, mais ne peut pas héberger le **backe
 - **Variable** : `BACKEND_URL` = URL de votre backend (ex: `https://api.votre-projet.railway.app`).
 - **Google Cloud Console** : Ajoutez `${BACKEND_URL}/api/auth/google/callback` aux URIs de redirection autorisées.
 
-### 🔑 Initialisation du compte Admin (Production)
-Si vous ne pouvez pas vous connecter avec `admin@clarify.app` après le premier déploiement, c'est que la base de données est vide.
-1. Connectez-vous à la console de votre hébergeur (Railway/Render).
-2. Lancez la commande suivante dans le terminal distant :
-   ```bash
-   npm run db:seed-admin
-   ```
-   *Cela créera le compte `admin@clarify.app` avec le mot de passe `clarify2024`.*
+### 🔑 Initialisation & Accès (Production)
+Le backend automatise désormais les migrations et la création du compte admin au démarrage.
+
+**Identifiants par défaut :**
+- **Email** : `admin@clarify.app`
+- **Mot de passe** : `clarify2024`
+
+> [!TIP]
+> Pour plus de détails sur l'architecture et la maintenance, consultez le **[Guide Technique de Production](file:///C:/Users/Julien/.gemini/antigravity/brain/d8ac135c-0d41-4056-a251-736243ed91e2/production_guide.md)**.
 
 ### 🚂 Railway / Render (Backend)
 Pour le backend, utilisez un service qui supporte **Docker** ou **Node.js avec disque persistant**.

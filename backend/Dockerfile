@@ -26,6 +26,10 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/seed_admin.js ./seed_admin.js
+COPY --from=builder /app/start.sh ./start.sh
+
+# Ensure script is executable
+RUN chmod +x start.sh
 
 EXPOSE 3001
-CMD ["npm", "start"]
+CMD ["./start.sh"]

@@ -10,7 +10,7 @@ const SALT_ROUNDS = 12;
 
 /** Generate a signed JWT for a user */
 const signToken = (userId) =>
-  jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
+  jwt.sign({ userId }, process.env.JWT_SECRET || 'temporary_dev_secret_change_me_in_prod', { expiresIn: '7d' });
 
 // ── REGISTER ────────────────────────────────────────────────────────────────
 router.post('/register', async (req, res, next) => {
