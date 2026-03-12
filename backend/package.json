@@ -9,7 +9,7 @@
     "dev": "nodemon src/index.js",
     "db:migrate": "npx prisma@6.0.0 migrate dev",
     "db:seed": "node src/seed.js",
-    "db:seed-admin": "node seed_admin.js",
+    "db:reset-prod": "node src/scripts/reset_db.js",
     "db:reset": "npx prisma@6.0.0 migrate reset --force",
     "postinstall": "prisma generate"
   },
