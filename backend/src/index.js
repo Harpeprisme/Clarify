@@ -23,13 +23,21 @@ console.log('📡 Origines autorisées par CORS :', allowedOrigins);
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl) 
-    // or origins in the allowedOrigins list
-    if (!origin || allowedOrigins.some(ao => origin.startsWith(ao))) {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    
+    const isAllowed = allowedOrigins.some(ao => {
+      // Normalize both for comparison (remove trailing slashes)
+      const normalizedAo = ao.replace(/\/$/, '');
+      const normalizedOrigin = origin.replace(/\/$/, '');
+      return normalizedOrigin === normalizedAo;
+    });
+
+    if (isAllowed) {
       callback(null, true);
     } else {
-      console.warn(`CORS blocked for origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
+      console.warn(`⚠️ CORS bloqué pour l'origine : ${origin}`);
+      callback(null, false); // Don't throw error, just don't allow
     }
   },
   credentials: true
