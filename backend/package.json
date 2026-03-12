@@ -10,7 +10,8 @@
     "db:migrate": "npx prisma@6.0.0 migrate dev",
     "db:seed": "node src/seed.js",
     "db:seed-admin": "node seed_admin.js",
-    "db:reset": "npx prisma@6.0.0 migrate reset --force"
+    "db:reset": "npx prisma@6.0.0 migrate reset --force",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",
@@ -27,10 +28,10 @@
     "papaparse": "^5.4.1",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
-    "passport-jwt": "^4.0.1"
+    "passport-jwt": "^4.0.1",
+    "prisma": "^6.0.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.0",
-    "prisma": "^6.0.0"
+    "nodemon": "^3.1.0"
   }
 }

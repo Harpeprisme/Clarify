@@ -1,21 +1,31 @@
 # Build stage
-FROM node:20-slim AS builder
+FROM node:20 AS builder
 WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update -y && apt-get install -y openssl ca-certificates
+
+# Copy dependency files and prisma schema
 COPY package*.json ./
+COPY prisma ./prisma/
+
+# prisma generate will run in postinstall
 RUN npm install
+
+# Copy source and schema
 COPY . .
-RUN npx prisma generate
-# In a real build, you might want to transpile or similar, but for this BE:
-# RUN npm run build (if applicable)
 
 # Production stage
 FROM node:20-slim
 WORKDIR /app
+
+RUN apt-get update -y && apt-get install -y openssl ca-certificates
+
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/tsconfig.json ./  # If exists
+COPY --from=builder /app/seed_admin.js ./seed_admin.js
 
 EXPOSE 3001
 CMD ["npm", "start"]
