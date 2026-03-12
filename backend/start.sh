@@ -1,7 +1,7 @@
 #!/bin/sh
 
-echo "🏗️  Starting Database Migrations..."
-npx prisma migrate deploy
+echo "🏗️  Starting Database Migrations (db push)..."
+npx prisma db push --accept-data-loss
 
 if [ "$RESET_DB_ON_START" = "true" ]; then
   echo "⚠️ RESET_DB_ON_START=true : Cleaning database and recreating admin..."

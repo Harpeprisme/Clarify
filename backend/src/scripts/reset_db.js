@@ -18,7 +18,8 @@ async function cleanAndRecreate() {
     console.log('[Reset] ✅ Base de données nettoyée.');
 
     // 2. Recreate admin
-    const passwordHash = await bcrypt.hash('Admin2024!', 12);
+    const adminPass = process.env.ADMIN_PASSWORD || 'Admin2024!';
+    const passwordHash = await bcrypt.hash(adminPass, 12);
     const admin = await prisma.user.create({
       data: {
         name: 'Admin',

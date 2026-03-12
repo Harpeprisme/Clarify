@@ -86,8 +86,9 @@ const prisma = require('./config/prisma');
 async function bootstrap() {
   try {
     const bcrypt = require('bcryptjs');
-    // Default admin password — user can change it via their profile
-    const defaultHash = await bcrypt.hash('Admin2024!', 12);
+    // Default admin password — configurable via ADMIN_PASSWORD env var
+    const adminPass = process.env.ADMIN_PASSWORD || 'Admin2024!';
+    const defaultHash = await bcrypt.hash(adminPass, 12);
 
     await prisma.user.upsert({
       where:  { email: 'admin@clarify.app' },
