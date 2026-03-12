@@ -79,7 +79,30 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ error: err.message || 'Internal Server Error' });
 });
 
-app.listen(PORT, () => {
+// ── Bootstrap: ensure admin account ─────────────────────────────────────────
+const prisma = require('./config/prisma');
+
+async function bootstrap() {
+  try {
+    await prisma.user.upsert({
+      where: { email: 'admin@clarify.app' },
+      update: { role: 'ADMIN' },          // Force ADMIN even if accidentally changed
+      create: {
+        name: 'Admin',
+        email: 'admin@clarify.app',
+        role: 'ADMIN',
+        // Placeholder hash — user must set password via /change-password or Google OAuth
+        passwordHash: '$2a$10$placeholder_change_via_profile'
+      }
+    });
+    console.log('✅ Bootstrap: admin@clarify.app → ADMIN');
+  } catch (err) {
+    console.error('⚠️  Bootstrap warning:', err.message);
+  }
+}
+
+app.listen(PORT, async () => {
+  await bootstrap();
   console.log(`🚀 Clarify API running on http://localhost:${PORT}`);
 });
 
