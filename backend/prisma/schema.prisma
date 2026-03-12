@@ -38,7 +38,7 @@ model Account {
 
 model Category {
   id           Int            @id @default(autoincrement())
-  name         String
+  name         String         @unique
   color        String         @default("#6B7280")
   icon         String         @default("tag")
   isDefault    Boolean        @default(false)

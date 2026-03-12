@@ -57,13 +57,13 @@ const categorizeTransaction = async (description, amount, userId) => {
   }
 
   // Retrieve the default category from DB
-  const category = await prisma.category.findUnique({
+  const category = await prisma.category.findFirst({
     where: { name: defaultCategoryName }
   });
 
   // Fallback to exactly 'Autres' if standard category was somehow deleted
   if (!category) {
-    return await prisma.category.findUnique({ where: { name: 'Autres' } });
+    return await prisma.category.findFirst({ where: { name: 'Autres' } });
   }
 
   return category;
