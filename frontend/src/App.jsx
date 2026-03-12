@@ -15,6 +15,8 @@ import Profile      from './pages/Profile';
 import Login        from './pages/Login';
 import Register     from './pages/Register';
 import AuthCallback from './pages/AuthCallback';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword  from './pages/ResetPassword';
 
 // Real auth guard — redirects to /login if no user token
 const PrivateRoute = ({ children }) => {
@@ -34,18 +36,15 @@ const App = () => {
   const setUser = useStore(state => state.setUser);
 
   // On every app load, refresh the user profile from the server to get fresh role/data.
-  // This fixes stale roles cached in localStorage (e.g. READER → ADMIN).
   useEffect(() => {
     const token = localStorage.getItem('openbank_token');
     if (!token) return;
     api.get('/auth/me')
       .then(({ data }) => {
-        // Update store + localStorage with fresh data from DB
         localStorage.setItem('openbank_user', JSON.stringify(data));
         setUser(data, token);
       })
       .catch(() => {
-        // Token is invalid/expired — clear session
         localStorage.removeItem('openbank_token');
         localStorage.removeItem('openbank_user');
         setUser(null, null);
@@ -55,10 +54,12 @@ const App = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Auth pages (no layout) */}
-        <Route path="/login"        element={<GuestRoute><Login /></GuestRoute>} />
-        <Route path="/register"     element={<GuestRoute><Register /></GuestRoute>} />
-        <Route path="/auth/callback" element={<AuthCallback />} />
+        {/* Public auth pages */}
+        <Route path="/login"           element={<GuestRoute><Login /></GuestRoute>} />
+        <Route path="/register"        element={<GuestRoute><Register /></GuestRoute>} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password"  element={<ResetPassword />} />
+        <Route path="/auth/callback"   element={<AuthCallback />} />
 
         {/* Protected pages (with layout) */}
         <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>

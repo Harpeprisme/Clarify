@@ -94,6 +94,14 @@ const Login = () => {
               <input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••" required style={{ width: '100%' }}/>
             </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-0.25rem' }}>
+              <Link to="/forgot-password" style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textDecoration: 'none' }}
+                onMouseEnter={e => e.target.style.color = 'var(--accent-primary)'}
+                onMouseLeave={e => e.target.style.color = 'var(--text-muted)'}
+              >
+                Mot de passe oublié ?
+              </Link>
+            </div>
             <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', padding: '0.8rem', marginTop: '0.5rem' }}>
               {loading ? 'Connexion…' : 'Se connecter'}
             </button>

@@ -25,10 +25,10 @@ router.get('/', async (req, res, next) => {
 // ── CREATE USER ──────────────────────────────────────────────────────────────
 router.post('/', async (req, res, next) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, role } = req.body;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: 'Nom, email et mot de passe requis' });
+    if (!name || !email) {
+      return res.status(400).json({ error: 'Nom et email requis' });
     }
 
     const existing = await prisma.user.findUnique({ where: { email } });
@@ -36,17 +36,19 @@ router.post('/', async (req, res, next) => {
       return res.status(409).json({ error: 'Cet email est déjà utilisé' });
     }
 
-    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+    // Generate a random temp password
+    const crypto = require('crypto');
+    const tempPassword = crypto.randomBytes(6).toString('base64url'); // ~8 chars, url-safe
+    const passwordHash = await bcrypt.hash(tempPassword, SALT_ROUNDS);
 
     const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        passwordHash,
-        role: role || 'READER'
-      },
+      data: { name, email, passwordHash, role: role || 'READER' },
       select: { id: true, name: true, email: true, role: true }
     });
+
+    // Send welcome email with temp password (non-blocking)
+    const { sendWelcomeEmail } = require('../services/emailService');
+    sendWelcomeEmail({ name, email, tempPassword }).catch(e => console.error('[Email] Welcome failed:', e.message));
 
     res.status(201).json(user);
   } catch (error) {
@@ -60,17 +62,18 @@ router.patch('/:id', async (req, res, next) => {
     const id = parseInt(req.params.id);
     const { name, role, email } = req.body;
 
-    // Prevent self-demotion or self-deletion if needed (optional but recommended)
-    // if (id === req.user.id && role && role !== 'ADMIN') {
-    //   return res.status(400).json({ error: 'Vous ne pouvez pas retirer votre propre rôle admin' });
-    // }
+    // Fetch the target user to check if they are the super-admin
+    const target = await prisma.user.findUnique({ where: { id }, select: { email: true } });
+
+    // Hard protection: admin@clarify.app is ALWAYS ADMIN — role can never be changed
+    const effectiveRole = (target?.email === 'admin@clarify.app') ? 'ADMIN' : role;
 
     const user = await prisma.user.update({
       where: { id },
-      data: { 
-        ...(name && { name }), 
-        ...(role && { role }),
-        ...(email && { email })
+      data: {
+        ...(name && { name }),
+        ...(effectiveRole && { role: effectiveRole }),
+        ...(email && target?.email !== 'admin@clarify.app' && { email })
       },
       select: { id: true, name: true, email: true, role: true }
     });

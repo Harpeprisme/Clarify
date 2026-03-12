@@ -21,6 +21,7 @@ model User {
   accounts     Account[]
   categories   Category[]
   rules        CategoryRule[]
+  passwordResetTokens PasswordResetToken[]
 }
 
 model Account {
@@ -94,4 +95,13 @@ model ImportHistory {
   account    Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
   rowCount   Int
   importedAt DateTime @default(now())
+}
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  used      Boolean  @default(false)
 }

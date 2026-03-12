@@ -9,6 +9,7 @@ const passport = require('./config/passport');
 const { authenticate } = require('./middleware/auth');
 
 const app = express();
+app.enable('trust proxy'); // Required for OAuth behind Railway/Render/Heroku reverse proxies
 const PORT = process.env.PORT || 3001;
 
 
@@ -84,15 +85,18 @@ const prisma = require('./config/prisma');
 
 async function bootstrap() {
   try {
+    const bcrypt = require('bcryptjs');
+    // Default admin password — user can change it via their profile
+    const defaultHash = await bcrypt.hash('Admin2024!', 12);
+
     await prisma.user.upsert({
-      where: { email: 'admin@clarify.app' },
-      update: { role: 'ADMIN' },          // Force ADMIN even if accidentally changed
+      where:  { email: 'admin@clarify.app' },
+      update: { role: 'ADMIN' },  // Only force role, preserve any password the admin set
       create: {
         name: 'Admin',
         email: 'admin@clarify.app',
         role: 'ADMIN',
-        // Placeholder hash — user must set password via /change-password or Google OAuth
-        passwordHash: '$2a$10$placeholder_change_via_profile'
+        passwordHash: defaultHash,
       }
     });
     console.log('✅ Bootstrap: admin@clarify.app → ADMIN');
@@ -103,6 +107,8 @@ async function bootstrap() {
 
 app.listen(PORT, async () => {
   await bootstrap();
+  const { startDailyDigest } = require('./jobs/dailyDigest');
+  startDailyDigest();
   console.log(`🚀 Clarify API running on http://localhost:${PORT}`);
 });
 

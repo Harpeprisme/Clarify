@@ -15,7 +15,7 @@ const signToken = (userId) =>
 // ── REGISTER ────────────────────────────────────────────────────────────────
 router.post('/register', async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
+    let { name, email, password } = req.body;
 
     if (!name || !email || !password)
       return res.status(400).json({ error: 'Nom, email et mot de passe requis' });
@@ -23,6 +23,7 @@ router.post('/register', async (req, res, next) => {
     if (password.length < 8)
       return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 8 caractères' });
 
+    email = email.trim().toLowerCase();
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing)
       return res.status(409).json({ error: 'Un compte avec cet email existe déjà' });
@@ -45,11 +46,12 @@ router.post('/register', async (req, res, next) => {
 // ── LOGIN ────────────────────────────────────────────────────────────────────
 router.post('/login', async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
 
     if (!email || !password)
       return res.status(400).json({ error: 'Email et mot de passe requis' });
 
+    email = email.trim().toLowerCase();
     const user = await prisma.user.findUnique({ where: { email } });
 
     if (!user || !user.passwordHash)
@@ -149,6 +151,65 @@ router.get('/google/callback', (req, res, next) => {
     console.log('Redirecting to frontend:', redirectUrl.substring(0, 100) + '...');
     res.redirect(redirectUrl);
   })(req, res, next);
+});
+
+// ── FORGOT PASSWORD ──────────────────────────────────────────────────────────
+router.post('/forgot-password', async (req, res, next) => {
+  try {
+    let { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email requis' });
+
+    email = email.trim().toLowerCase();
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    // Always return 200 to avoid email enumeration
+    if (!user) return res.json({ message: 'Si cet email existe, un lien de réinitialisation a été envoyé.' });
+
+    // Invalidate any existing token for this user
+    await prisma.passwordResetToken.updateMany({
+      where: { userId: user.id, used: false },
+      data: { used: true }
+    });
+
+    // Generate secure token
+    const crypto = require('crypto');
+    const token = crypto.randomBytes(64).toString('hex');
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+
+    await prisma.passwordResetToken.create({ data: { token, userId: user.id, expiresAt } });
+
+    const APP_URL = process.env.APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
+    const resetUrl = `${APP_URL}/reset-password?token=${token}`;
+
+    const { sendPasswordResetEmail } = require('../services/emailService');
+    await sendPasswordResetEmail({ name: user.name, email: user.email, resetUrl });
+
+    res.json({ message: 'Si cet email existe, un lien de réinitialisation a été envoyé.' });
+  } catch (err) { next(err); }
+});
+
+// ── RESET PASSWORD ───────────────────────────────────────────────────────────
+router.post('/reset-password', async (req, res, next) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !password) return res.status(400).json({ error: 'Token et mot de passe requis' });
+    if (password.length < 8) return res.status(400).json({ error: '8 caractères minimum' });
+
+    const record = await prisma.passwordResetToken.findUnique({ where: { token } });
+
+    if (!record || record.used || record.expiresAt < new Date()) {
+      return res.status(400).json({ error: 'Lien invalide ou expiré. Faites une nouvelle demande.' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+
+    await prisma.$transaction([
+      prisma.user.update({ where: { id: record.userId }, data: { passwordHash } }),
+      prisma.passwordResetToken.update({ where: { id: record.id }, data: { used: true } })
+    ]);
+
+    res.json({ message: 'Mot de passe mis à jour avec succès.' });
+  } catch (err) { next(err); }
 });
 
 module.exports = router;

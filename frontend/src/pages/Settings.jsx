@@ -1,22 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import Card from '../components/Card';
-import UsersManagement from '../components/UsersManagement';
 import useStore from '../store';
 
 const Settings = () => {
   const [categories, setCategories] = useState([]);
   const [rules, setRules] = useState([]);
-  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Rule form
   const [newKeyword, setNewKeyword] = useState('');
   const [ruleCategoryId, setRuleCategoryId] = useState('');
-
-  // User form
-  const [newUserName, setNewUserName] = useState('');
-  const [newUserEmail, setNewUserEmail] = useState('');
 
   // Accounts: confirm states per account id
   const [confirmClearId, setConfirmClearId]   = useState(null);
@@ -28,11 +23,9 @@ const Settings = () => {
   const [editBalanceVal, setEditBalanceVal]   = useState('');
   const [balanceSaving, setBalanceSaving]     = useState(false);
 
-  // Re-categorize
-  const [recatLoading, setRecatLoading] = useState(false);
-  const [recatResult, setRecatResult] = useState(null);
 
-  const currentUser = useStore(state => state.user) || { name: 'Julien (Admin)', role: 'ADMIN' };
+  const navigate = useNavigate();
+  const currentUser = useStore(state => state.user) || { name: 'Admin', role: 'ADMIN' };
   const accounts = useStore(state => state.accounts);
   const fetchAccountsStore = useStore(state => state.fetchAccounts);
 
@@ -44,14 +37,12 @@ const Settings = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [catRes, rulesRes, usersRes] = await Promise.all([
+      const [catRes, rulesRes] = await Promise.all([
         api.get('/categories'),
         api.get('/rules'),
-        api.get('/users')
       ]);
       setCategories(catRes.data);
       setRules(rulesRes.data);
-      setUsers(usersRes.data);
     } catch (error) {
       console.error(error);
     } finally {
@@ -80,35 +71,13 @@ const Settings = () => {
     }
   };
 
-  const handleAddUser = async (e) => {
-    e.preventDefault();
-    if (!newUserName || !newUserEmail) return;
-    try {
-      await api.post('/users', { name: newUserName, email: newUserEmail, role: 'READER' });
-      setNewUserName('');
-      setNewUserEmail('');
-      fetchData();
-    } catch (error) {
-       console.error(error);
-    }
-  };
-
-  const handleDeleteUser = async (id) => {
-    try {
-      await api.delete(`/users/${id}`);
-      fetchData();
-    } catch (error) {
-       console.error(error);
-    }
-  };
 
   const handleClearHistory = async (accountId) => {
     try {
       const { data } = await api.delete(`/accounts/${accountId}/transactions`);
       setConfirmClearId(null);
-      setActionMsg(`✅ Historique effacé — ${data.deleted} transaction(s) supprimée(s).`);
-      fetchAccountsStore();
-      setTimeout(() => setActionMsg(''), 4000);
+      await fetchAccountsStore();
+      navigate('/dashboard');
     } catch (err) {
       console.error(err);
       setActionMsg('❌ Erreur lors de la suppression.');
@@ -119,9 +88,8 @@ const Settings = () => {
     try {
       await api.delete(`/accounts/${accountId}`);
       setConfirmDeleteId(null);
-      setActionMsg('✅ Compte supprimé.');
-      fetchAccountsStore();
-      setTimeout(() => setActionMsg(''), 4000);
+      await fetchAccountsStore();
+      navigate('/dashboard');
     } catch (err) {
       console.error(err);
       setActionMsg('❌ Erreur lors de la suppression du compte.');
@@ -151,50 +119,11 @@ const Settings = () => {
 
   const fmt = (n) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n ?? 0);
 
-  const [activeTab, setActiveTab] = useState('profile');
-
-  const handleExportCSV = async () => {
-    try {
-      const response = await api.get('/export', { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'openbank_export_enrichi.csv');
-      document.body.appendChild(link);
-      link.click();
-    } catch (error) {
-      console.error("Export error", error);
-    }
-  };
-
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-      <div className="flex justify-between items-end mb-6">
-        <div>
-          <h1 className="title mb-0">Paramètres</h1>
-        </div>
-        
-        {/* Modern Premium Tabs */}
-        {currentUser.role === 'ADMIN' && (
-          <div className="flex p-1 rounded-2xl glass-card" style={{ border: '1px solid var(--border-light)' }}>
-            <button 
-              className={`px-6 py-2 rounded-xl text-sm font-bold transition-all duration-300 ${activeTab === 'profile' ? 'bg-primary text-white shadow-lvl2' : 'text-muted hover:text-main hover:bg-white/5'}`}
-              onClick={() => setActiveTab('profile')}
-            >
-              Mon Profil
-            </button>
-            <button 
-              className={`px-6 py-2 rounded-xl text-sm font-bold transition-all duration-300 ${activeTab === 'users' ? 'bg-primary text-white shadow-lvl2' : 'text-muted hover:text-main hover:bg-white/5'}`}
-              onClick={() => setActiveTab('users')}
-            >
-              Équipe & Accès
-            </button>
-          </div>
-        )}
-      </div>
+      <h1 className="title">Paramètres</h1>
 
-      {activeTab === 'profile' ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem' }}>
           
           {/* Accounts Management — full width */}
           <Card title="Comptes bancaires" style={{ gridColumn: '1 / -1' }}>
@@ -275,55 +204,6 @@ const Settings = () => {
             </div>
           </Card>
 
-          {/* Export Data */}
-          <Card title="Export des données">
-            <p className="text-muted mb-6 text-sm">
-              Téléchargez toutes vos transactions avec leurs catégories et informations enrichies au format CSV.
-            </p>
-            <button className="btn btn-primary px-8 py-3" onClick={handleExportCSV}>
-              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" className="mr-2"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-              Télécharger Export CSV
-            </button>
-          </Card>
-
-          {/* Re-categorize */}
-          <Card title="🤖 Recatégorisation automatique">
-            <p className="text-muted mb-4 text-sm">
-              Relance le moteur intelligent sur <strong>toutes vos transactions existantes</strong> pour appliquer les nouvelles règles de catégorisation.
-            </p>
-            {recatResult && (
-              <div className="p-3 mb-4 rounded-xl text-sm font-semibold" style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success)' }}>
-                ✅ {recatResult.updated} mise(s) à jour · {recatResult.skipped} inchangée(s) · {recatResult.total} total
-              </div>
-            )}
-            <button
-              className="btn btn-primary px-8 py-3"
-              disabled={recatLoading}
-              onClick={async () => {
-                setRecatLoading(true);
-                setRecatResult(null);
-                try {
-                  const { data } = await api.post('/import/re-categorize');
-                  setRecatResult(data);
-                } catch (err) {
-                  console.error(err);
-                } finally {
-                  setRecatLoading(false);
-                }
-              }}
-            >
-              {recatLoading ? (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <svg style={{ animation: 'spin 1s linear infinite', width: 18, height: 18 }} fill="none" viewBox="0 0 24 24">
-                    <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                    <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 100 16v-4l-3 3 3 3v-4a8 8 0 01-8-8z"/>
-                  </svg>
-                  Analyse en cours…
-                </span>
-              ) : '✨ Recatégoriser tout'}
-            </button>
-          </Card>
-
           <Card title="Règles d'automatisations" style={{ gridColumn: '1 / -1' }}>
             <p className="text-muted mb-6 text-sm">
               Définissez des mots-clés pour classer automatiquement vos transactions lors des futurs imports.
@@ -368,9 +248,6 @@ const Settings = () => {
             </div>
           </Card>
         </div>
-      ) : (
-        <UsersManagement />
-      )}
     </div>
   );
 };
