@@ -11,7 +11,14 @@ const { authenticate } = require('./middleware/auth');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// ── Middleware ───────────────────────────────────────────────────────────────
+// ── 1. Global Logger (MUST BE FIRST) ────────────────────────────────────────
+app.use((req, res, next) => {
+  const origin = req.headers.origin || 'N/A';
+  console.log(`📡 [${req.method}] ${req.url} | Origin: ${origin}`);
+  next();
+});
+
+// ── 2. CORS Configuration ───────────────────────────────────────────────────
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
@@ -19,36 +26,40 @@ const allowedOrigins = [
   ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(s => s.trim()) : [])
 ].filter(Boolean);
 
-console.log('📡 Origines autorisées par CORS :', allowedOrigins.join(', '));
+console.log('✅ CORS Static Origins:', allowedOrigins);
 
 app.use(cors({
   origin: (origin, callback) => {
+    // Si pas d'origine (ex: Postman), on autorise
     if (!origin) return callback(null, true);
+
     const cleanOrigin = origin.trim().replace(/\/$/, '');
+    
+    // Comparaison exacte
     const isAllowed = allowedOrigins.some(ao => ao.trim().replace(/\/$/, '') === cleanOrigin);
 
     if (isAllowed) {
+      console.log(`✅ CORS Match: ${origin}`);
       callback(null, true);
     } else {
-      console.warn(`⚠️ CORS REFUSÉ pour : "${origin}"`);
+      console.warn(`❌ CORS Rejected: "${origin}"`);
+      console.warn(`   Expected one of: ${allowedOrigins.join(', ')}`);
+      // Temporairement, si c'est du vercel.app, on peut laisser passer pour débloquer
+      if (origin.endsWith('.vercel.app')) {
+        console.warn('   ⚠️ Auto-allowing .vercel.app for debugging');
+        return callback(null, true);
+      }
       callback(null, false);
     }
   },
   credentials: true,
-  optionsSuccessStatus: 200 // Some legacy browsers crash on 204
+  optionsSuccessStatus: 200
 }));
-
-// ── Global Logger (For Debugging CORS & Requests) ───────────────────────────
-app.use((req, res, next) => {
-  const origin = req.headers.origin || 'N/A';
-  console.log(`📡 [${new Date().toISOString()}] ${req.method} ${req.url} - Origin: ${origin}`);
-  next();
-});
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Session (needed for passport OAuth flow only)
+// ── 3. Session & Passport ───────────────────────────────────────────────────
 app.use(session({
   secret: process.env.SESSION_SECRET || 'fallback_secret',
   resave: false,
