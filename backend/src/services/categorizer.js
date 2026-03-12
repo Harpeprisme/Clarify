@@ -6,6 +6,7 @@ const prisma = require('../config/prisma');
  */
 const categorizeTransaction = async (description, amount, userId) => {
   const descLower = description.toLowerCase();
+  console.log(`[Categorizer] Input: "${description}" | User: ${userId}`);
   
   // 1. Check rules
   const rules = await prisma.categoryRule.findMany({
@@ -24,6 +25,7 @@ const categorizeTransaction = async (description, amount, userId) => {
 
   for (const rule of rules) {
     if (descLower.includes(rule.keyword.toLowerCase())) {
+      console.log(`[Categorizer] Rule match: "${rule.keyword}" -> ${rule.category.name}`);
       return rule.category;
     }
   }
@@ -44,7 +46,9 @@ const categorizeTransaction = async (description, amount, userId) => {
   };
 
   for (const [catName, keys] of Object.entries(keywords)) {
-    if (keys.some(k => descLower.includes(k))) {
+    const matchedKey = keys.find(k => descLower.includes(k));
+    if (matchedKey) {
+      console.log(`[Categorizer] Keyword match: "${matchedKey}" -> ${catName}`);
       defaultCategoryName = catName;
       break;
     }
@@ -53,6 +57,7 @@ const categorizeTransaction = async (description, amount, userId) => {
   // Handle special cases based on amount types
   if (defaultCategoryName === 'Autres' && amount > 0) {
     if (descLower.includes('salaire') || descLower.includes('paie') || descLower.includes('virement cpam') || descLower.includes('caf ')) {
+      console.log(`[Categorizer] Special case match: Revenus`);
       defaultCategoryName = 'Revenus';
     }
   }

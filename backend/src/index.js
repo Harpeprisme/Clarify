@@ -11,8 +11,6 @@ const { authenticate } = require('./middleware/auth');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// ── 1. Global Logger (MUST BE FIRST) ────────────────────────────────────────
-// ── 1. Global Logger (PLACEHOLDER - MOVED BELOW) ───────────────────────────
 
 
 // ── 2. CORS Configuration ───────────────────────────────────────────────────
@@ -23,31 +21,12 @@ const allowedOrigins = [
   ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(s => s.trim()) : [])
 ].filter(Boolean);
 
-console.log('✅ CORS Static Origins:', allowedOrigins);
-
 app.use(cors({
   origin: (origin, callback) => {
-    // Si pas d'origine (ex: Postman), on autorise
-    if (!origin) return callback(null, true);
-
+    if (!origin) return callback(null, true); // Allow Postman / server-to-server
     const cleanOrigin = origin.trim().replace(/\/$/, '');
-    
-    // Comparaison exacte
     const isAllowed = allowedOrigins.some(ao => ao.trim().replace(/\/$/, '') === cleanOrigin);
-
-    if (isAllowed) {
-      console.log(`✅ CORS Match: ${origin}`);
-      callback(null, true);
-    } else {
-      console.warn(`❌ CORS Rejected: "${origin}"`);
-      console.warn(`   Expected one of: ${allowedOrigins.join(', ')}`);
-      // Temporairement, si c'est du vercel.app, on peut laisser passer pour débloquer
-      if (origin.endsWith('.vercel.app')) {
-        console.warn('   ⚠️ Auto-allowing .vercel.app for debugging');
-        return callback(null, true);
-      }
-      callback(null, false);
-    }
+    callback(isAllowed ? null : new Error(`CORS blocked: ${origin}`), isAllowed);
   },
   credentials: true,
   optionsSuccessStatus: 200

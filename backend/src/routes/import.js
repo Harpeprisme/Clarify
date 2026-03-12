@@ -78,6 +78,7 @@ router.post('/', upload.single('file'), async (req, res, next) => {
 
       if (!existing) {
         const category = await categorizeTransaction(row.description, row.amount, req.user.id);
+        console.log(`[Import] Categorizing "${row.description}" [${row.amount}] -> ${category ? category.name : 'NONE'}`);
 
         await prisma.transaction.create({
           data: {

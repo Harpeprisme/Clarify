@@ -9,7 +9,7 @@ const navItems = [
   { path: '/charts', label: 'Graphiques', icon: 'M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z' },
   { path: '/budget', label: 'Budgets', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
   { path: '/analysis', label: 'Analyse', icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6' },
-  { path: '/settings', label: 'Paramètres', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' }
+  { path: '/settings', label: 'Paramètres', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
 ];
 
 const Sidebar = () => {
@@ -25,17 +25,9 @@ const Sidebar = () => {
   const avatarInitial = user?.name?.charAt(0).toUpperCase() || '?';
 
   return (
-    <aside className="app-sidebar" style={{
-      width: '260px',
-      backgroundColor: 'var(--bg-sidebar)',
-      borderRight: '1px solid var(--border-light)',
-      display: 'flex',
-      flexDirection: 'column',
-      padding: '1.5rem 1rem',
-      height: '100vh',
-      flexShrink: 0
-    }}>
-      <div className="sidebar-header" style={{ padding: '0 0.5rem', marginBottom: '2.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+    <aside className="app-sidebar">
+      {/* Brand */}
+      <div className="sidebar-header">
         <svg width="36" height="36" viewBox="0 0 100 100" fill="none" style={{ flexShrink: 0 }}>
           <defs>
             <linearGradient id="clarifyGrad" x1="0%" y1="100%" x2="100%" y2="0%">
@@ -51,60 +43,27 @@ const Sidebar = () => {
           <path d="M 25 85 L 50 30 A 10 10 0 0 1 65 35 L 50 85 Z" fill="url(#clarifyGrad)" opacity="0.95" />
           <path d="M 40 85 L 75 15 A 8 8 0 0 1 90 20 L 70 85 Z" fill="url(#clarifyGrad)" />
         </svg>
-        <div style={{ 
-          fontSize: '26px', 
-          fontWeight: '800', 
-          fontFamily: 'Inter',
-          color: 'var(--text-main)',
-          letterSpacing: '-0.02em',
-          display: 'flex',
-          alignItems: 'baseline'
-        }}>
+        <div className="sidebar-brand-name">
           clar
           <span style={{ position: 'relative', display: 'inline-block' }}>
             ı
             <span style={{
-              position: 'absolute',
-              top: '0.1em',
-              left: '45%',
-              width: '6px',
-              height: '7px',
+              position: 'absolute', top: '0.1em', left: '45%',
+              width: '6px', height: '7px',
               backgroundColor: 'var(--electric-mint)',
               transform: 'translateX(-50%) rotate(15deg) skewX(-10deg)',
               borderRadius: '1px'
-            }}></span>
+            }} />
           </span>
           fy
         </div>
       </div>
 
-      <nav className="sidebar-nav" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
+      {/* Nav Links */}
+      <nav className="sidebar-nav">
         {navItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-            style={({ isActive }) => ({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '1rem',
-              padding: '0.75rem 1rem',
-              borderRadius: 'var(--radius-md)',
-              color: isActive ? 'var(--accent-primary)' : 'var(--text-muted)',
-              backgroundColor: isActive ? 'rgba(45, 225, 194, 0.1)' : 'transparent',
-              textDecoration: 'none',
-              fontWeight: isActive ? '600' : '500',
-              transition: 'all 0.2s ease'
-            })}
-          >
-            <svg 
-              className="w-5 h-5 nav-icon" 
-              style={{ width: '20px', height: '20px' }}
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24" 
-              xmlns="http://www.w3.org/2000/svg"
-            >
+          <NavLink key={item.path} to={item.path} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+            <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
             </svg>
             <span className="nav-label">{item.label}</span>
@@ -112,36 +71,21 @@ const Sidebar = () => {
         ))}
       </nav>
 
-      {/* Profile + Logout footer */}
-      <div className="sidebar-footer" style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-        <NavLink to="/profile" style={({ isActive }) => ({
-          display: 'flex', alignItems: 'center', gap: '0.75rem',
-          padding: '0.6rem 1rem', borderRadius: 'var(--radius-md)',
-          textDecoration: 'none', fontWeight: '500',
-          color: isActive ? 'var(--accent-primary)' : 'var(--text-muted)',
-          backgroundColor: isActive ? 'rgba(45, 225, 194, 0.1)' : 'transparent',
-          transition: 'all 0.2s'
-        })}>
+      {/* Footer: Profile + Logout */}
+      <div className="sidebar-footer">
+        <NavLink to="/profile" className={({ isActive }) => `sidebar-profile-link ${isActive ? 'active' : ''}`}>
           {user?.avatarUrl ? (
-            <img src={user.avatarUrl} alt="avatar" style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }}/>
+            <img src={user.avatarUrl} alt="avatar" style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
           ) : (
-            <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--accent-gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: '700', color: '#fff', flexShrink: 0 }}>
-              {avatarInitial}
-            </div>
+            <div className="sidebar-avatar">{avatarInitial}</div>
           )}
           <div style={{ overflow: 'hidden' }}>
-            <div className="nav-label" style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.name || 'Profil'}</div>
-            <div className="nav-label" style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{user?.role}</div>
+            <div className="nav-label sidebar-user-name">{user?.name || 'Profil'}</div>
+            <div className="nav-label sidebar-user-role">{user?.role}</div>
           </div>
         </NavLink>
 
-        <button onClick={handleLogout} style={{
-          display: 'flex', alignItems: 'center', gap: '0.75rem',
-          padding: '0.6rem 1rem', borderRadius: 'var(--radius-md)',
-          background: 'transparent', border: 'none', cursor: 'pointer',
-          color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: '500',
-          transition: 'all 0.2s', width: '100%', textAlign: 'left'
-        }}>
+        <button onClick={handleLogout} className="sidebar-logout-btn">
           <svg style={{ width: 18, height: 18, flexShrink: 0 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
           </svg>
