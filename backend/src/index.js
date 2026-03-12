@@ -63,7 +63,7 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(session({
   secret: process.env.SESSION_SECRET || 'fallback_secret',
   resave: false,
-  saveUninitialized: false,
+  saveUninitialized: true, // Needed for many OAuth providers to store state before auth
   cookie: { secure: false, maxAge: 1000 * 60 * 15 } // 15 min session for OAuth redirect
 }));
 

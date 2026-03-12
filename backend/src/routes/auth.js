@@ -121,19 +121,34 @@ router.delete('/account', authenticate, async (req, res, next) => {
 });
 
 // ── GOOGLE OAUTH ─────────────────────────────────────────────────────────────
-router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+router.get('/google', (req, res, next) => {
+  console.log('Initiating Google OAuth flow...');
+  passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
+});
 
-router.get('/google/callback',
-  passport.authenticate('google', { session: false, failureRedirect: `${process.env.FRONTEND_URL}/login?error=google_failed` }),
-  (req, res) => {
-    const token = signToken(req.user.id);
-    const user  = JSON.stringify({
-      id: req.user.id, name: req.user.name, email: req.user.email,
-      role: req.user.role, avatarUrl: req.user.avatarUrl, googleId: req.user.googleId
+router.get('/google/callback', (req, res, next) => {
+  console.log('Received Google OAuth callback');
+  passport.authenticate('google', { session: false, failureRedirect: `${process.env.FRONTEND_URL}/login?error=google_failed` }, (err, user, info) => {
+    if (err) {
+      console.error('Google OAuth Authentication Error:', err);
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_error`);
+    }
+    if (!user) {
+      console.warn('Google OAuth failed: No user found/created', info);
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=google_failed`);
+    }
+
+    console.log('Google OAuth Success for user:', user.email);
+    const token = signToken(user.id);
+    const safeUser = JSON.stringify({
+      id: user.id, name: user.name, email: user.email,
+      role: user.role, avatarUrl: user.avatarUrl, googleId: user.googleId
     });
-    // Redirect to frontend with token in URL so it can store it
-    res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}&user=${encodeURIComponent(user)}`);
-  }
-);
+    
+    const redirectUrl = `${process.env.FRONTEND_URL}/auth/callback?token=${token}&user=${encodeURIComponent(safeUser)}`;
+    console.log('Redirecting to frontend:', redirectUrl.substring(0, 100) + '...');
+    res.redirect(redirectUrl);
+  })(req, res, next);
+});
 
 module.exports = router;
