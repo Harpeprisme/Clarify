@@ -1,54 +1,47 @@
-import React, { useState, useEffect } from 'react';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import Card from '../components/Card';
+import useStore from '../store';
 
 const formatCurrency = (amount) => {
   return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount);
 };
 
 const Budget = () => {
+  const navigate = useNavigate();
   const [categories, setCategories] = useState([]);
   const [budgets, setBudgets] = useState([]);
   const [expenses, setExpenses] = useState({});
   const [loading, setLoading] = useState(true);
   
-  // Selected month state
-  const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const { getFilterParams, filterPreset, filterDateFrom, filterDateTo, filterAccountIds, filterAccountType, accounts } = useStore();
 
   useEffect(() => {
     fetchData();
-  }, [month]);
+  }, [filterPreset, filterDateFrom, filterDateTo, filterAccountIds, filterAccountType]);
+
+  const monthsRatio = useMemo(() => {
+    try {
+      const start = filterDateFrom ? new Date(filterDateFrom) : (accounts.length > 0 ? new Date(accounts[0].createdAt) : new Date());
+      const end = filterDateTo ? new Date(filterDateTo) : new Date();
+      const days = Math.max(1, (end - start) / (1000 * 60 * 60 * 24));
+      return days / 30.44; // Avg days per month
+    } catch { return 1; }
+  }, [filterDateFrom, filterDateTo, accounts]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch categories
-      const catRes = await api.get('/categories');
+      const [catRes, bufRes] = await Promise.all([
+        api.get('/categories'),
+        api.get('/budgets')
+      ]);
       setCategories(catRes.data);
-
-      // 2. Fetch budgets for the month
-      const bufRes = await api.get(`/budgets?month=${month}`);
       setBudgets(bufRes.data);
 
-      // 3. Fetch expenses for the month to compare with budget
-      // Construct exact start and end of that month
-      const startD = new Date(`${month}-01T00:00:00`);
-      const endD = new Date(startD.getFullYear(), startD.getMonth() + 1, 0, 23, 59, 59);
-      
-      const expRes = await api.get(`/charts/expenses-by-category?startDate=${startD.toISOString()}&endDate=${endD.toISOString()}`);
-      
-      // Transform expenses array to an object indexed by categoryId
-      const expDict = {};
-      expRes.data.forEach(item => {
-        // charts logic maps it by name, but we need categoryId.
-        // Let's refetch or map it. Actually the charts route returned {name, color, value}
-        // Let's do a quick custom fetch from transactions to guarantee ID mapping
-        // Quickest way for MVP is to fetch all transactions matching the date and type EXPENSE
-      });
-
-      const transRes = await api.get(`/transactions?startDate=${startD.toISOString()}&endDate=${endD.toISOString()}&limit=1000`);
+      const query = getFilterParams().toString();
+      const transRes = await api.get(`/transactions?${query}&limit=5000`);
       
       const calcExp = {};
       transRes.data.data.forEach(t => {
@@ -57,7 +50,6 @@ const Budget = () => {
         }
       });
       setExpenses(calcExp);
-
     } catch (error) {
       console.error(error);
     } finally {
@@ -69,8 +61,7 @@ const Budget = () => {
     try {
       await api.post('/budgets', {
         categoryId,
-        amount: parseFloat(amount) || 0,
-        month
+        amount: parseFloat(amount) || 0
       });
       fetchData();
     } catch (error) {
@@ -82,17 +73,10 @@ const Budget = () => {
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-4">
         <h1 className="title" style={{ marginBottom: 0 }}>Suivi Budgétaire</h1>
-        <input 
-          type="month" 
-          className="input" 
-          style={{ width: 'auto' }}
-          value={month}
-          onChange={(e) => setMonth(e.target.value)}
-        />
       </div>
-
+      
       <Card>
         {loading ? (
           <div className="text-center p-8 text-muted">Chargement des données...</div>
@@ -100,51 +84,66 @@ const Budget = () => {
           <div className="flex-col gap-4">
             {categories.map(category => {
               const budgetObj = getBudgetItem(category.id);
-              const budgetLimit = budgetObj ? budgetObj.amount : 0;
+              const monthlyGoal = budgetObj ? budgetObj.amount : 0;
+              const globalGoal = monthlyGoal * monthsRatio;
+              
               const currentExpense = expenses[category.id] || 0;
               
-              // If no budget is set AND no expenses, don't show by default to save space
-              if (budgetLimit === 0 && currentExpense === 0) return null;
+              if (monthlyGoal === 0 && currentExpense === 0) return null;
 
-              const percent = budgetLimit > 0 ? (currentExpense / budgetLimit) * 100 : 0;
-              const isOverBudget = currentExpense > budgetLimit && budgetLimit > 0;
+              const percent = globalGoal > 0 ? (currentExpense / globalGoal) * 100 : 0;
+              const isOverBudget = currentExpense > globalGoal && globalGoal > 0;
               const progressColor = isOverBudget ? 'var(--danger)' : percent > 80 ? 'var(--warning)' : 'var(--success)';
 
               return (
-                <div key={category.id} style={{ padding: '1rem', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)' }}>
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="flex items-center gap-2">
-                      <div style={{ width: 14, height: 14, borderRadius: '50%', backgroundColor: category.color }}></div>
-                      <span className="font-semibold">{category.name}</span>
+                <div key={category.id} style={{ padding: '1.25rem', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)' }}>
+                  <div className="flex justify-between items-center mb-3">
+                    <div className="flex items-center gap-3">
+                      <div style={{ width: 16, height: 16, borderRadius: '50%', backgroundColor: category.color }}></div>
+                      <span 
+                        className="font-semibold text-lg" 
+                        style={{ cursor: 'pointer', transition: 'color 0.2s' }}
+                        onMouseOver={(e) => e.target.style.color = 'var(--accent-primary)'}
+                        onMouseOut={(e) => e.target.style.color = 'inherit'}
+                        onClick={() => navigate(`/transactions?categoryId=${category.id}`)}
+                        title="Voir les transactions de cette catégorie"
+                      >
+                        {category.name}
+                      </span>
                     </div>
                     <div className="flex items-center gap-4">
                       {isOverBudget && (
                         <span className="badge badge-danger">
-                          Dépassement de {formatCurrency(currentExpense - budgetLimit)}
+                          Dépassement: {formatCurrency(currentExpense - globalGoal)}
                         </span>
                       )}
                       <div className="text-right">
-                        <span className="font-bold">{formatCurrency(currentExpense)}</span>
-                        <span className="text-muted" style={{ margin: '0 0.5rem' }}>/</span>
-                        <input 
-                          type="number"
-                          className="input"
-                          style={{ width: '100px', padding: '0.3rem', fontSize: '0.9rem', textAlign: 'right' }}
-                          defaultValue={budgetLimit || ''}
-                          placeholder="Budget"
-                          onBlur={(e) => {
-                            if (e.target.value !== budgetLimit.toString()) {
-                              handleUpdateBudget(category.id, e.target.value);
-                            }
-                          }}
-                        />
+                        <span className="font-bold text-xl">{formatCurrency(currentExpense)}</span>
+                        <span className="text-muted text-sm" style={{ margin: '0 0.5rem' }}>/ {formatCurrency(globalGoal)}</span>
                       </div>
                     </div>
                   </div>
 
+                  {/* Goal editing */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', fontSize: '0.85rem' }}>
+                    <span className="text-muted">Objectif mensuel de base :</span>
+                    <input 
+                      type="number"
+                      className="input"
+                      style={{ width: '100px', padding: '0.3rem', fontSize: '0.85rem', textAlign: 'right' }}
+                      defaultValue={monthlyGoal || ''}
+                      placeholder="Budget"
+                      onBlur={(e) => {
+                        if (e.target.value !== monthlyGoal.toString()) {
+                          handleUpdateBudget(category.id, e.target.value);
+                        }
+                      }}
+                    />
+                  </div>
+
                   {/* Progress Bar */}
-                  {budgetLimit > 0 && (
-                    <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--bg-app)', borderRadius: '4px', overflow: 'hidden' }}>
+                  {globalGoal > 0 && (
+                    <div style={{ position: 'relative', width: '100%', height: '12px', backgroundColor: 'var(--bg-app)', borderRadius: '6px', overflow: 'hidden' }}>
                       <div style={{ 
                         height: '100%', 
                         width: `${Math.min(percent, 100)}%`, 

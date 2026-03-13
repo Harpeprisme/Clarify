@@ -13,11 +13,26 @@ async function cleanAndRecreate() {
     await prisma.categoryRule.deleteMany();
     await prisma.category.deleteMany();
     await prisma.account.deleteMany();
+    await prisma.accountType.deleteMany();
     await prisma.passwordResetToken.deleteMany();
     await prisma.user.deleteMany();
     console.log('[Reset] ✅ Base de données nettoyée.');
 
-    // 2. Recreate admin
+    // 2. Recreate Account Types
+    console.log('[Reset] Recréation des types de comptes...');
+    const accountTypes = [
+      { id: 'COURANT', name: 'Compte Courant', group: 'COURANT' },
+      { id: 'LIVRET_A', name: 'Livret A', group: 'EPARGNE' },
+      { id: 'PEA', name: 'PEA', group: 'INVESTISSEMENT' },
+      { id: 'CTO', name: 'Compte-Titre Ordinaire', group: 'INVESTISSEMENT' },
+      { id: 'ASSURANCE_VIE', name: 'Assurance-Vie', group: 'INVESTISSEMENT' }
+    ];
+    for (const t of accountTypes) {
+      await prisma.accountType.create({ data: t });
+    }
+    console.log('[Reset] ✅ Types de comptes recréés.');
+
+    // 3. Recreate admin
     const adminPass = process.env.ADMIN_PASSWORD || 'Admin2024!';
     const passwordHash = await bcrypt.hash(adminPass, 12);
     const admin = await prisma.user.create({
@@ -42,6 +57,7 @@ async function cleanAndRecreate() {
       { name: 'Santé', color: '#EF4444', icon: 'heart' },
       { name: 'Impôts', color: '#6B7280', icon: 'file-text' },
       { name: 'Épargne', color: '#14B8A6', icon: 'briefcase' },
+      { name: 'Investissement', color: '#0EA5E9', icon: 'trending-up' },
       { name: 'Revenus', color: '#22C55E', icon: 'dollar-sign' },
       { name: 'Virement', color: '#6366F1', icon: 'refresh-cw' },
       { name: 'Autres', color: '#9CA3AF', icon: 'help-circle' },

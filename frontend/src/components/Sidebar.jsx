@@ -9,6 +9,7 @@ const navItems = [
   { path: '/charts', label: 'Graphiques', icon: 'M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z' },
   { path: '/budget', label: 'Budgets', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
   { path: '/analysis', label: 'Analyse', icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6' },
+  { path: '/bourse', label: 'Bourse', icon: 'M3 3v18h18 M9 14l4-4 4 4 4-8' },
 ];
 
 const Sidebar = () => {

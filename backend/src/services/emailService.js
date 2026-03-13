@@ -86,6 +86,15 @@ const resetPasswordTemplate = ({ name, resetUrl }) => layout(`
   <p style="color:#4A6582;font-size:12px;margin:16px 0 0;">Ou copiez ce lien dans votre navigateur :<br/><span style="color:#2DE1C2;word-break:break-all;">${resetUrl}</span></p>
 `);
 
+/** Email verification */
+const emailVerificationTemplate = ({ name, verifyUrl }) => layout(`
+  ${h1('Vérifiez votre adresse email 📧')}
+  ${p('Bonjour <strong style="color:#fff;">' + name + '</strong>,')}
+  ${p('Afin de sécuriser votre compte sur ' + APP_NAME + ', nous avons besoin que vous vérifiiez votre adresse email.')}
+  ${btn(verifyUrl, 'Vérifier mon email')}
+  <p style="color:#4A6582;font-size:12px;margin:16px 0 0;">Ou copiez ce lien dans votre navigateur :<br/><span style="color:#2DE1C2;word-break:break-all;">${verifyUrl}</span></p>
+`);
+
 /** Daily digest email */
 const dailyDigestTemplate = ({ name, date, accounts, totalBalance, monthlyExpenses, monthlyIncome, topCategories }) => layout(`
   ${h1('Votre résumé du ' + date + ' 📊')}
@@ -152,7 +161,15 @@ const sendWelcomeEmail = ({ name, email, tempPassword }) =>
 const sendPasswordResetEmail = ({ name, email, resetUrl }) =>
   sendMail({ to: email, subject: `Réinitialisation de votre mot de passe ${APP_NAME}`, html: resetPasswordTemplate({ name, resetUrl }) });
 
+const sendVerificationEmail = ({ name, email, verifyUrl }) =>
+  sendMail({ to: email, subject: `Vérifiez votre email sur ${APP_NAME}`, html: emailVerificationTemplate({ name, verifyUrl }) });
+
 const sendDailyDigestEmail = (to, data) =>
   sendMail({ to, subject: `📊 Votre résumé ${APP_NAME} du ${data.date}`, html: dailyDigestTemplate(data) });
 
-module.exports = { sendWelcomeEmail, sendPasswordResetEmail, sendDailyDigestEmail };
+module.exports = { 
+  sendWelcomeEmail, 
+  sendPasswordResetEmail, 
+  sendVerificationEmail, 
+  sendDailyDigestEmail 
+};

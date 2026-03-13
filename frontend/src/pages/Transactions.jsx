@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import api from '../api';
 import Card from '../components/Card';
@@ -17,11 +18,14 @@ const BLANK_FORM = {
 };
 
 const Transactions = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initCat = searchParams.get('categoryId') || '';
+
   const [transactions, setTransactions] = useState([]);
   const [meta, setMeta]                 = useState({ page: 1, totalPages: 1, total: 0 });
   const [loading, setLoading]           = useState(true);
   const [search, setSearch]             = useState('');
-  const [filterCategoryId, setFilterCategoryId] = useState('');
+  const [filterCategoryId, setFilterCategoryId] = useState(initCat);
   const [categories, setCategories]     = useState([]);
 
   const accounts   = useStore(s => s.accounts);
@@ -38,6 +42,16 @@ const Transactions = () => {
 
   // Reset to page 1 when filters change
   useEffect(() => { setMeta(p => ({ ...p, page: 1 })); }, [dateFrom, dateTo, accountIds.join(',')]);
+
+  // Sync filterCategoryId back to URL for shareability
+  useEffect(() => {
+    if (filterCategoryId) {
+      searchParams.set('categoryId', filterCategoryId);
+    } else {
+      searchParams.delete('categoryId');
+    }
+    setSearchParams(searchParams, { replace: true });
+  }, [filterCategoryId]);
 
   useEffect(() => { fetchCategories(); }, []);
   useEffect(() => { fetchTransactions(); }, [meta.page, search, filterCategoryId, dateFrom, dateTo, accountIds.join(',')]);

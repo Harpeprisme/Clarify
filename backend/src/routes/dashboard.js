@@ -9,8 +9,11 @@ const express = require('express');
 const router  = express.Router();
 const prisma  = require('../config/prisma');
 
-function buildWhere({ startDate, endDate, accountIds }) {
+function buildWhere({ startDate, endDate, accountIds, userId }) {
   const where = {};
+  if (userId) {
+    where.account = { userId };
+  }
   if (startDate || endDate) {
     where.date = {};
     if (startDate) where.date.gte = new Date(startDate);
@@ -41,11 +44,14 @@ router.get('/', async (req, res, next) => {
       ? accountIds.filter(id => userAccountIds.includes(id))
       : userAccountIds;
 
-    const periodWhere = buildWhere({ startDate, endDate, accountIds: validAccountIds });
-    const accountWhere = { accountId: { in: validAccountIds } };
+    const periodWhere = buildWhere({ startDate, endDate, accountIds: validAccountIds, userId: req.user.id });
+    const accountWhere = { account: { userId: req.user.id } };
+    if (validAccountIds.length > 0) {
+      accountWhere.accountId = { in: validAccountIds };
+    }
 
-    // If the user has no accounts, we can return early or allow the empty queries to run
-    // For consistency with other routes, we'll let the queries run with validAccountIds = []
+    // Even if no specific accounts are requested, the `userId` filter ensures 
+    // we only analyze the current user's data (or return exactly 0 if they don't have accounts).
 
     const [periodIncome, periodExpense, recentTransactions, txTotalResult] = await Promise.all([
       prisma.transaction.aggregate({

@@ -43,6 +43,7 @@ router.get('/expenses-by-category', async (req, res, next) => {
 
     const where = {
       ...buildWhere({ startDate, endDate }),
+      account: { userId: req.user.id },
       accountId: { in: validAccountIds },
       type: 'EXPENSE',
       isInternal: false,
@@ -94,6 +95,7 @@ router.get('/income-vs-expenses', async (req, res, next) => {
 
     const where = {
       ...buildWhere({ startDate, endDate }),
+      account: { userId: req.user.id },
       accountId: { in: validAccountIds },
       isInternal: false,
     };

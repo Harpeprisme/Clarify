@@ -13,7 +13,9 @@ router.get('/', async (req, res, next) => {
       page = 1, limit = 20
     } = req.query;
 
-    const where = {};
+    const where = {
+      account: { userId: req.user.id }
+    };
     
     // REQUIRE ownership through account
     const userAccounts = await prisma.account.findMany({

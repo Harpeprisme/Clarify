@@ -4,7 +4,23 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Start seeding...');
 
-  // 1. Create Default Categories
+  // 1. Create Default Account Types
+  const accountTypes = [
+    { id: 'COURANT', name: 'Compte Courant', group: 'COURANT' },
+    { id: 'LIVRET_A', name: 'Livret A', group: 'EPARGNE' },
+    { id: 'PEA', name: 'PEA', group: 'INVESTISSEMENT' },
+    { id: 'CTO', name: 'Compte-Titre Ordinaire', group: 'INVESTISSEMENT' },
+    { id: 'ASSURANCE_VIE', name: 'Assurance-Vie', group: 'INVESTISSEMENT' }
+  ];
+  for (const t of accountTypes) {
+    await prisma.accountType.upsert({
+      where: { id: t.id },
+      update: t,
+      create: t
+    });
+  }
+
+  // 2. Create Default Categories
   const categoriesData = [
     { name: 'Logement', color: '#8B5CF6', icon: 'home' }, // Violet
     { name: 'Alimentation', color: '#10B981', icon: 'shopping-cart' }, // Emerald

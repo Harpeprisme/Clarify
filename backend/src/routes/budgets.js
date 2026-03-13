@@ -2,17 +2,11 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../config/prisma');
 
-// Get budgets for a specific month
+// Get global budgets
 router.get('/', async (req, res, next) => {
   try {
-    const { month } = req.query; // Format: YYYY-MM
-    
-    if (!month) {
-      return res.status(400).json({ error: 'Month parameter (YYYY-MM) is required' });
-    }
-
     const budgets = await prisma.budget.findMany({
-      where: { month, userId: req.user.id },
+      where: { month: 'GLOBAL', userId: req.user.id },
       include: { category: true }
     });
 
@@ -22,20 +16,20 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// Set or update a budget for a category and month
+// Set or update a global category budget
 router.post('/', async (req, res, next) => {
   try {
-    const { categoryId, amount, month } = req.body;
+    const { categoryId, amount } = req.body;
     
-    if (!categoryId || amount === undefined || !month) {
-      return res.status(400).json({ error: 'categoryId, amount, and month are required' });
+    if (!categoryId || amount === undefined) {
+      return res.status(400).json({ error: 'categoryId and amount are required' });
     }
 
     const budget = await prisma.budget.upsert({
       where: {
         categoryId_month_userId: {
           categoryId: parseInt(categoryId),
-          month,
+          month: 'GLOBAL',
           userId: req.user.id
         }
       },
@@ -43,7 +37,7 @@ router.post('/', async (req, res, next) => {
       create: {
         categoryId: parseInt(categoryId),
         amount: parseFloat(amount),
-        month,
+        month: 'GLOBAL',
         userId: req.user.id
       },
       include: { category: true }

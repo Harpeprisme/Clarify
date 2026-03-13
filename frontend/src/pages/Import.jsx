@@ -10,7 +10,11 @@ const Import = () => {
   const [accountId, setAccountId] = useState('');
   const [accounts, setAccounts] = useState([]);
   const [newAccountName, setNewAccountName] = useState('');
-  const [newAccountType, setNewAccountType] = useState('COURANT');
+  
+  const accountTypes = useStore(state => state.accountTypes);
+  const [newAccountType, setNewAccountType] = useState(
+     accountTypes.length > 0 ? accountTypes[0].id : 'COURANT'
+  );
   
   // Balance to set AFTER import
   const [importCurrentBalance, setImportCurrentBalance] = useState('');
@@ -184,10 +188,10 @@ const Import = () => {
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Type de compte</label>
                 <select className="input" value={newAccountType} onChange={e => setNewAccountType(e.target.value)}>
-                  <option value="COURANT">Compte Courant</option>
-                  <option value="LIVRET_A">Livret A</option>
-                  <option value="PEA">PEA</option>
-                  <option value="AUTRE">Autre</option>
+                  {accountTypes.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                  {accountTypes.length === 0 && <option value="COURANT">Compte Courant</option>}
                 </select>
               </div>
 

@@ -55,8 +55,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// ── Public Routes (no auth needed) ──────────────────────────────────────────
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/account-types', authenticate, require('./routes/account-types')); // Only authenticated users (creation public, update admin only)
+app.use('/api/bourses', authenticate, require('./routes/bourses'));
 
 // Health check (public)
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date() }));

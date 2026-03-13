@@ -77,8 +77,10 @@ const Charts = () => {
 
   return (
     <div>
-      <h1 className="title">Graphiques & Analyses</h1>
-
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="title" style={{ marginBottom: 0 }}>Graphiques & Analyses</h1>
+      </div>
+      
       {loading ? (
         <div className="text-center p-8 text-muted">Génération des graphiques…</div>
       ) : (

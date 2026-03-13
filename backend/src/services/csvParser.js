@@ -88,10 +88,9 @@ const COLUMN_PATTERNS = {
   ],
   // Extra: brokerage quantity — used together with unit price
   quantity: [
-    /^qt.$/,               // "Qté"
+    /^qt/,                 // Matches "Qté", "Qt", "Qte", etc.
     /^quantit/,
     /^nombre/,
-    /^qty/,
     /^shares/,
   ],
 };
@@ -304,29 +303,57 @@ const extractFromHeader = (text, allLines, headerLineIdx) => {
 };
 
 // ─────────────────────────────────────────────
+// Brokerage helpers
+// ─────────────────────────────────────────────
+
+/** Known investment-related keywords for ISIN heuristic detection */
+const INVESTMENT_KEYWORDS = [
+  'etf', 'ishares', 'amundi', 'lyxor', 'ucits', 'vanguard',
+  'xtrackers', 'action ', 'achat comptant', 'vente comptant',
+  'opcvm', 'sicav', 'fcp ', 'trackers'
+];
+
+/**
+ * Returns true if the description looks like an investment transaction
+ * that would benefit from an ISIN lookup.
+ */
+const looksLikeInvestment = (description, opKey, opValue) => {
+  if (opKey && opValue) return true; // has an Opération column → brokerage file
+  const lower = description.toLowerCase();
+  return INVESTMENT_KEYWORDS.some(kw => lower.includes(kw));
+};
+
+/**
+ * Cleans a transaction description into a compact Yahoo Finance query.
+ * Strips French brokerage prefixes, ETF taxonomy words, and number artifacts.
+ */
+const buildYahooQuery = (description) => {
+  return description
+    .replace(/Achat Comptant|Vente Comptant|\s+–\s+/gi, ' ')
+    .replace(/[0-9]+,[0-9]+(?:\s?€|\s?EUR|\s?USD)?/g, '')
+    .replace(/\b(UCITS|ETF|EUR|ACC|HEDGED|INC|DIST|USD)\b/gi, ' ')
+    .replace(/[-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+// ─────────────────────────────────────────────
 // Main parser
 // ─────────────────────────────────────────────
 
 /**
  * Parse a bank CSV.
  * @param {Buffer|string} csvContent
- * @returns {Promise<Array<{date, description, amount, type}>>}
+ * @returns {Promise<Array<{date, description, amount, type, isin, unitPrice, quantity}>>}
  */
 const parseCSV = (csvContent) => {
   return new Promise((resolve, reject) => {
     try {
-      // Step 1: Decode
       const text = Buffer.isBuffer(csvContent) ? decodeBuffer(csvContent) : csvContent;
-
-      // Step 2: Detect delimiter
       const delimiter = detectDelimiter(text);
-
-      // Step 3: Find header line
       const allLines = text.split(/\r?\n/);
       const headerLineIdx = findHeaderLine(allLines, delimiter);
-      const dataText = extractFromHeader(text, allLines, headerLineIdx === -1 ? 0 : headerLineIdx);
-
-      // Step 4: Parse with PapaParse
+      const dataText = extractFromHeader(text, allLines, Math.max(0, headerLineIdx));
       Papa.parse(dataText, {
         header: true,
         delimiter,
@@ -343,29 +370,27 @@ const parseCSV = (csvContent) => {
             console.log('[csvParser] Delimiter:', JSON.stringify(delimiter));
             console.log('[csvParser] Columns:', detectedColumns);
 
-            const rows = results.data.map((row, rowIndex) => {
+          const rows = results.data.map((row) => {
               const keys = Object.keys(row).filter(k => k.trim() !== '');
 
-              // Step 5: Column detection
               const dateKey      = findColumn(keys, COLUMN_PATTERNS.date);
               const descKey      = findColumn(keys, COLUMN_PATTERNS.description);
               const debitKey     = findColumn(keys, COLUMN_PATTERNS.debit);
               const creditKey    = findColumn(keys, COLUMN_PATTERNS.credit);
-              const amountKey    = !debitKey && !creditKey
-                ? findColumn(keys, COLUMN_PATTERNS.amount)
-                : null;
-              // Brokerage fallbacks
+              const amountKey    = !debitKey && !creditKey ? findColumn(keys, COLUMN_PATTERNS.amount) : null;
               const unitPriceKey = findColumn(keys, COLUMN_PATTERNS.unitPrice);
               const quantityKey  = findColumn(keys, COLUMN_PATTERNS.quantity);
+              const opKey        = keys.find(k => /^op.ration$/i.test(norm(k)));
 
               if (!dateKey) return null;
 
-              // Parse date
-              const rawDate = row[dateKey];
-              const date = parseDate(rawDate);
+              const date = parseDate(row[dateKey]);
               if (!date) return null;
 
-              // Parse amount — priority: debit/credit > unified amount > qty×price
+              const unitPriceVal = unitPriceKey ? parseAmount(row[unitPriceKey]) : null;
+              const quantityVal  = quantityKey  ? parseAmount(row[quantityKey])  : null;
+
+              // Amount — priority: debit/credit > unified amount > qty×price
               let amount = 0;
               if (debitKey || creditKey) {
                 const debit  = debitKey  ? parseAmount(row[debitKey])  : 0;
@@ -373,27 +398,18 @@ const parseCSV = (csvContent) => {
                 amount = credit - debit;
               } else if (amountKey) {
                 amount = parseAmount(row[amountKey]);
-              } else if (unitPriceKey && quantityKey) {
-                // Brokerage fallback: compute from Qté × Prix
-                // Amount sign: the "Montant net" column in Fortuneo already carries the sign
-                // but if we're here it wasn't matched — compute it
-                const qty   = parseAmount(row[quantityKey]);
-                const price = parseAmount(row[unitPriceKey]);
-                amount = -(qty * price); // Purchases are cash-negative
+              } else if (unitPriceVal !== null && quantityVal !== null) {
+                amount = -(quantityVal * unitPriceVal);
               }
 
-              // Build description — for brokerage rows, combine the operation type + libellé
-              // Keys: libellé (titrename), Opération (type: Achat/Vente)
-              const opKey = keys.find(k => /^op.ration$/i.test(norm(k)));
+              // Description — combine Opération + libellé for brokerage rows
               let description = '';
               if (opKey && descKey && norm(row[opKey]) !== norm(row[descKey] || '')) {
-                // "Achat Comptant – iShares MSCI World…"
                 description = `${String(row[opKey]).trim()} – ${String(row[descKey]).trim()}`;
               } else if (descKey) {
                 description = String(row[descKey]).trim();
-              }
-
-              if (!description && keys.length > 2) {
+              } else if (keys.length > 2) {
+                // Fallback: pick the longest non-numeric cell value
                 description = keys
                   .filter(k => k !== dateKey && k !== debitKey && k !== creditKey && k !== amountKey)
                   .map(k => String(row[k]).trim())
@@ -401,21 +417,59 @@ const parseCSV = (csvContent) => {
                   .sort((a, b) => b.length - a.length)[0] || '';
               }
 
-              // Clean multiline descriptions
-              description = description
-                .replace(/\r?\n+/g, ' ')
-                .replace(/\s{2,}/g, ' ')
-                .trim();
-
+              description = description.replace(/\r?\n+/g, ' ').replace(/\s{2,}/g, ' ').trim();
               if (!description) return null;
 
-              const type = amount > 0 ? 'INCOME' : 'EXPENSE';
+              // Correct amount sign for brokerage rows using the Opération column
+              if (opKey) {
+                const op = String(row[opKey] || '').toLowerCase();
+                if (op.includes('achat') && amount > 0) amount = -amount;
+                if (op.includes('vente') && amount < 0) amount = -amount;
+              }
 
-              return { date, description, amount, type };
-            }).filter(row => row !== null);
+              const isinMatch = description.match(/\b[A-Z]{2}[A-Z0-9]{9}[0-9]\b/i);
+              const isin = isinMatch ? isinMatch[0].toUpperCase() : null;
+
+              const needsIsinLookup = !isin && looksLikeInvestment(description, opKey, row[opKey]);
+              const type = amount >= 0 ? 'INCOME' : 'EXPENSE';
+
+              return { date, description, amount, type, isin, unitPrice: unitPriceVal, quantity: quantityVal, needsIsinLookup };
+            }).filter(Boolean);
 
             console.log(`[csvParser] ✅ ${rows.length} valid rows parsed`);
-            resolve(rows);
+            
+            // Post-process rows for ISIN lookups
+            const processIsins = async () => {
+              let yf;
+              try {
+                const { default: YahooFinance } = await import('yahoo-finance2');
+                yf = new YahooFinance();
+              } catch (e) {
+                console.warn('[csvParser] yahoo-finance2 unavailable:', e.message);
+              }
+
+              for (const row of rows) {
+                if (row.needsIsinLookup && yf) {
+                  try {
+                    const query = buildYahooQuery(row.description);
+                    if (query.length > 5) {
+                      const result = await yf.search(query);
+                      if (result.quotes?.length > 0) {
+                        row.isin = result.quotes[0].symbol;
+                        console.log(`[csvParser] 🔍 Resolved "${query}" → ${row.isin}`);
+                      }
+                    }
+                  } catch (e) {
+                    console.warn(`[csvParser] ISIN lookup failed for "${row.description}":`, e.message);
+                  }
+                }
+                delete row.needsIsinLookup;
+              }
+
+              resolve(rows);
+            };
+
+            processIsins();
           } catch (err) {
             reject(err);
           }

@@ -9,6 +9,7 @@ import Import       from './pages/Import';
 import Transactions from './pages/Transactions';
 import Charts       from './pages/Charts';
 import Budget       from './pages/Budget';
+import Bourse       from './pages/Bourse';
 import Analysis     from './pages/Analysis';
 import Settings     from './pages/Settings';
 import Profile      from './pages/Profile';
@@ -17,6 +18,7 @@ import Register     from './pages/Register';
 import AuthCallback from './pages/AuthCallback';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword  from './pages/ResetPassword';
+import VerifyEmail    from './pages/VerifyEmail';
 
 // Real auth guard — redirects to /login if no user token
 const PrivateRoute = ({ children }) => {
@@ -43,6 +45,7 @@ const App = () => {
       .then(({ data }) => {
         localStorage.setItem('openbank_user', JSON.stringify(data));
         setUser(data, token);
+        useStore.getState().fetchAccountTypes();
       })
       .catch(() => {
         localStorage.removeItem('openbank_token');
@@ -59,6 +62,7 @@ const App = () => {
         <Route path="/register"        element={<GuestRoute><Register /></GuestRoute>} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password"  element={<ResetPassword />} />
+        <Route path="/verify-email"    element={<VerifyEmail />} />
         <Route path="/auth/callback"   element={<AuthCallback />} />
 
         {/* Protected pages (with layout) */}
@@ -69,6 +73,7 @@ const App = () => {
           <Route path="import"       element={<Import />} />
           <Route path="charts"       element={<Charts />} />
           <Route path="budget"       element={<Budget />} />
+          <Route path="bourse"       element={<Bourse />} />
           <Route path="analysis"     element={<Analysis />} />
           <Route path="settings"     element={<Settings />} />
           <Route path="profile"      element={<Profile />} />

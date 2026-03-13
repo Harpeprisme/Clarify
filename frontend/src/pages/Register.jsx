@@ -21,8 +21,9 @@ const Register = () => {
       setError('Les mots de passe ne correspondent pas');
       return;
     }
-    if (password.length < 8) {
-      setError('Le mot de passe doit contenir au moins 8 caractères');
+    const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+    if (!PASSWORD_REGEX.test(password)) {
+      setError('Le mot de passe doit contenir 8 caractères min., majuscule, minuscule, chiffre et caractère spécial.');
       return;
     }
     setLoading(true);

@@ -7,11 +7,16 @@ import useStore from '../store';
 const Settings = () => {
   const [categories, setCategories] = useState([]);
   const [rules, setRules] = useState([]);
+  const [accountTypes, setAccountTypes] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Rule form
   const [newKeyword, setNewKeyword] = useState('');
   const [ruleCategoryId, setRuleCategoryId] = useState('');
+
+  // Account Type form
+  const [newTypeName, setNewTypeName] = useState('');
+  const [newTypeGroup, setNewTypeGroup] = useState('COURANT');
 
   // Accounts: confirm states per account id
   const [confirmClearId, setConfirmClearId]   = useState(null);
@@ -37,12 +42,14 @@ const Settings = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [catRes, rulesRes] = await Promise.all([
+      const [catRes, rulesRes, typesRes] = await Promise.all([
         api.get('/categories'),
         api.get('/rules'),
+        api.get('/account-types'),
       ]);
       setCategories(catRes.data);
       setRules(rulesRes.data);
+      setAccountTypes(typesRes.data);
     } catch (error) {
       console.error(error);
     } finally {
@@ -71,6 +78,29 @@ const Settings = () => {
     }
   };
 
+  const handleAddAccountType = async (e) => {
+    e.preventDefault();
+    if (!newTypeName || !newTypeGroup) return;
+    try {
+      await api.post('/account-types', {
+        id: newTypeName.toUpperCase().replace(/\s+/g, '_'),
+        name: newTypeName,
+        group: newTypeGroup
+      });
+      setNewTypeName('');
+      fetchData();
+      useStore.getState().fetchAccountTypes();
+    } catch (err) { console.error(err); }
+  };
+
+  const handleDeleteAccountType = async (id) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce type de compte ?')) return;
+    try {
+      await api.delete(`/account-types/${id}`);
+      fetchData();
+      useStore.getState().fetchAccountTypes();
+    } catch (err) { console.error(err); }
+  };
 
   const handleClearHistory = async (accountId) => {
     try {
@@ -203,6 +233,50 @@ const Settings = () => {
               {accounts.length === 0 && <p className="text-muted p-6">Aucun compte bancaire configuré.</p>}
             </div>
           </Card>
+
+          {currentUser.role === 'ADMIN' && (
+            <Card title="Types de comptes (Admin)" style={{ gridColumn: '1 / -1' }}>
+              <p className="text-muted mb-6 text-sm">
+                Gérez les types de comptes et leurs regroupements (Courant, Épargne, Investissements).
+              </p>
+              <div className="flex-col gap-6">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+                  {accountTypes.map(t => (
+                    <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem 1rem', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-app)' }}>
+                      <div>
+                        <div className="font-bold text-sm">{t.name}</div>
+                        <div className="text-xs text-muted uppercase tracking-widest">{t.group}</div>
+                      </div>
+                      <button className="text-danger p-2 hover:bg-danger-bg rounded-lg transition-all" onClick={() => handleDeleteAccountType(t.id)}>
+                        <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="p-5 rounded-2xl glass-card border border-light" style={{ background: 'rgba(45, 225, 194, 0.03)' }}>
+                  <form onSubmit={handleAddAccountType} className="flex gap-4 items-end">
+                    <div style={{ flex: 1 }}>
+                      <label className="text-[10px] font-bold text-muted mb-2 ml-1 block uppercase tracking-widest">Nom</label>
+                      <input type="text" className="input" placeholder="ex: Assurance-Vie" value={newTypeName} onChange={e => setNewTypeName(e.target.value)} required />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label className="text-[10px] font-bold text-muted mb-2 ml-1 block uppercase tracking-widest">Groupe</label>
+                      <select className="input" value={newTypeGroup} onChange={e => setNewTypeGroup(e.target.value)} required>
+                        <option value="COURANT">COURANT</option>
+                        <option value="EPARGNE">ÉPARGNE</option>
+                        <option value="INVESTISSEMENT">INVESTISSEMENT</option>
+                        <option value="CREDIT">CRÉDIT</option>
+                      </select>
+                    </div>
+                    <button type="submit" className="btn btn-primary px-8" style={{ height: '42px' }}>
+                      Ajouter
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </Card>
+          )}
 
           <Card title="Règles d'automatisations" style={{ gridColumn: '1 / -1' }}>
             <p className="text-muted mb-6 text-sm">

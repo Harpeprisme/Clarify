@@ -14,6 +14,7 @@ const ACCOUNT_TYPES = [
   { key: 'ALL', label: 'Tous' },
   { key: 'COURANT', label: 'Courant' },
   { key: 'EPARGNE', label: 'Épargne' },
+  { key: 'INVESTISSEMENT', label: 'Investissement' },
   { key: 'CREDIT', label: 'Crédit' },
 ];
 
@@ -59,21 +60,17 @@ const GlobalFilterBar = () => {
   };
 
   // Helper for type matching (mirrors store logic)
-  const matchesType = (accType, filterType) => {
-    if (filterType === 'ALL') return true;
-    const t = (accType || '').toUpperCase();
-    if (filterType === 'COURANT') return t === 'COURANT';
-    if (filterType === 'EPARGNE') {
-      return ['LIVRET_A', 'PEA', 'EPARGNE', 'LIVRET', 'PEL'].includes(t) || t.includes('EPARGNE') || t.includes('ÉPARGNE');
-    }
-    if (filterType === 'CREDIT') {
-      return ['CREDIT', 'CRÉDIT', 'LOA', 'CREDIT_CONSO'].includes(t) || t.includes('CREDIT') || t.includes('CRÉDIT');
-    }
-    return false;
-  };
+  // No longer needed since we use accountTypes directly
+
 
   // Filter accounts based on type
-  const filteredAccounts = accounts.filter(acc => matchesType(acc.type, filterAccountType));
+  const { accountTypes } = useStore();
+  const filteredAccounts = accounts.filter(acc => {
+    if (filterAccountType === 'ALL') return true;
+    const typeDef = accountTypes.find(t => t.id === acc.type);
+    const group = typeDef ? typeDef.group : null;
+    return group === filterAccountType;
+  });
 
   // Label for account button
   const accountLabel = filterAccountIds.length === 0
@@ -248,7 +245,9 @@ const GlobalFilterBar = () => {
                   </span>
                   <div style={{ flex: 1, textAlign: 'left' }}>
                     <div>{acc.name}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{acc.type}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      {accountTypes.find(t => t.id === acc.type)?.name || acc.type}
+                    </div>
                   </div>
                 </button>
               );

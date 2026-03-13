@@ -42,6 +42,7 @@ router.get('/', async (req, res, next) => {
 
     const baseWhere = {
       ...buildWhere({ startDate, endDate }),
+      account: { userId: req.user.id },
       accountId: { in: validAccountIds },
       type: 'EXPENSE',
       isInternal: false,

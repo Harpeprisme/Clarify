@@ -15,6 +15,8 @@ model User {
   googleId     String?   @unique
   avatarUrl    String?
   role         String    @default("READER") // ADMIN | READER
+  isEmailVerified        Boolean  @default(false)
+  emailVerificationToken String?  @unique
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   budgets      Budget[]
@@ -24,10 +26,18 @@ model User {
   passwordResetTokens PasswordResetToken[]
 }
 
+model AccountType {
+  id        String   @id // e.g., "COURANT", "LIVRET_A", "PEA", "CTO"
+  name      String
+  group     String   // COURANT | EPARGNE | INVESTISSEMENT | CREDIT
+  accounts  Account[]
+}
+
 model Account {
   id                  Int           @id @default(autoincrement())
   name                String
-  type                String        @default("COURANT") // COURANT | LIVRET_A | PEA | AUTRE
+  type                String        @default("COURANT") // Foreign key to AccountType.id
+  accountType         AccountType?  @relation(fields: [type], references: [id])
   initialBalance      Float         @default(0)        // Solde réel au jour de la 1ère importation
   initialBalanceDate  DateTime?                        // Date de référence du solde initial
   userId              Int
@@ -75,6 +85,11 @@ model Transaction {
   isInternal  Boolean  @default(false)
   importedAt  DateTime @default(now())
   notes       String?
+  // Bourse / Investments
+  isin        String?
+  unitPrice   Float?
+  quantity    Float?
+  currency    String?  @default("EUR")
 }
 
 model Budget {

@@ -179,6 +179,13 @@ const KEYWORD_WEIGHTS = {
     ['virement epargne', 3], ['virement livret', 3],
   ],
 
+  'Investissement': [
+    ['achat comptant', 3], ['vente comptant', 3], ['ordre de bourse', 3],
+    ['titre', 2], ['frais de courtage', 3], ['etf ', 3], ['action ', 2],
+    ['dividende', 2], ['coupon', 2], ['opcvm', 3], ['fcp ', 3], ['sicav', 3],
+    ['pea ', 2], ['compte titres', 3], ['assurance vie', 2],
+  ],
+
   'Revenus': [
     ['salaire', 3], ['paie ', 3], ['paye ', 3], ['remuneration', 3],
     ['virement salaire', 3], ['virement employeur', 3],

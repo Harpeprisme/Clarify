@@ -7,6 +7,8 @@ const passport = require('../config/passport');
 const { authenticate } = require('../middleware/auth');
 
 const SALT_ROUNDS = 12;
+const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+const PWD_ERR_MSG = "Le mot de passe doit contenir au moins 8 caractères, dont une majuscule, une minuscule, un chiffre et un caractère spécial.";
 
 /** Generate a signed JWT for a user */
 const signToken = (userId) =>
@@ -20,8 +22,8 @@ router.post('/register', async (req, res, next) => {
     if (!name || !email || !password)
       return res.status(400).json({ error: 'Nom, email et mot de passe requis' });
 
-    if (password.length < 8)
-      return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 8 caractères' });
+    if (!PASSWORD_REGEX.test(password))
+      return res.status(400).json({ error: PWD_ERR_MSG });
 
     email = email.trim().toLowerCase();
     const existing = await prisma.user.findUnique({ where: { email } });
@@ -34,10 +36,22 @@ router.post('/register', async (req, res, next) => {
     const count = await prisma.user.count();
     const role  = (email === 'admin@clarify.app' || count === 0) ? 'ADMIN' : 'READER';
 
+    // Generate Verification Token
+    const crypto = require('crypto');
+    const emailVerificationToken = crypto.randomBytes(32).toString('hex');
+    const isEmailVerified = (email === 'admin@clarify.app'); // Auto-verify admin
+
     const user = await prisma.user.create({
-      data: { name, email, passwordHash, role },
-      select: { id: true, name: true, email: true, role: true, avatarUrl: true }
+      data: { name, email, passwordHash, role, emailVerificationToken, isEmailVerified },
+      select: { id: true, name: true, email: true, role: true, avatarUrl: true, isEmailVerified: true }
     });
+
+    if (!isEmailVerified) {
+      const APP_URL = process.env.APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
+      const verifyUrl = `${APP_URL}/verify-email?token=${emailVerificationToken}`;
+      const { sendVerificationEmail } = require('../services/emailService');
+      sendVerificationEmail({ name: user.name, email: user.email, verifyUrl }).catch(err => console.error("Email error:", err));
+    }
 
     res.status(201).json({ token: signToken(user.id), user });
   } catch (err) { next(err); }
@@ -61,7 +75,7 @@ router.post('/login', async (req, res, next) => {
     if (!valid)
       return res.status(401).json({ error: 'Identifiants invalides' });
 
-    const safeUser = { id: user.id, name: user.name, email: user.email, role: user.role, avatarUrl: user.avatarUrl, googleId: user.googleId };
+    const safeUser = { id: user.id, name: user.name, email: user.email, role: user.role, avatarUrl: user.avatarUrl, googleId: user.googleId, isEmailVerified: user.isEmailVerified };
     res.json({ token: signToken(user.id), user: safeUser });
   } catch (err) { next(err); }
 });
@@ -76,8 +90,8 @@ router.post('/change-password', authenticate, async (req, res, next) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
-    if (!newPassword || newPassword.length < 8)
-      return res.status(400).json({ error: 'Le nouveau mot de passe doit contenir au moins 8 caractères' });
+    if (!newPassword || !PASSWORD_REGEX.test(newPassword))
+      return res.status(400).json({ error: PWD_ERR_MSG });
 
     const user = await prisma.user.findUnique({ where: { id: req.user.id } });
 
@@ -107,7 +121,7 @@ router.patch('/profile', authenticate, async (req, res, next) => {
     const user = await prisma.user.update({
       where: { id: req.user.id },
       data: { name: name.trim() },
-      select: { id: true, name: true, email: true, role: true, avatarUrl: true, googleId: true }
+      select: { id: true, name: true, email: true, role: true, avatarUrl: true, googleId: true, isEmailVerified: true }
     });
 
     res.json(user);
@@ -193,7 +207,7 @@ router.post('/reset-password', async (req, res, next) => {
   try {
     const { token, password } = req.body;
     if (!token || !password) return res.status(400).json({ error: 'Token et mot de passe requis' });
-    if (password.length < 8) return res.status(400).json({ error: '8 caractères minimum' });
+    if (!PASSWORD_REGEX.test(password)) return res.status(400).json({ error: PWD_ERR_MSG });
 
     const record = await prisma.passwordResetToken.findUnique({ where: { token } });
 
@@ -210,6 +224,48 @@ router.post('/reset-password', async (req, res, next) => {
 
     res.json({ message: 'Mot de passe mis à jour avec succès.' });
   } catch (err) { next(err); }
+});
+
+// ── VERIFY EMAIL ─────────────────────────────────────────────────────────────
+router.post('/verify-email', async (req, res, next) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ error: 'Token manquant' });
+
+    const user = await prisma.user.findUnique({ where: { emailVerificationToken: token } });
+    if (!user) return res.status(400).json({ error: 'Token invalide ou expiré' });
+
+    const verifiedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: { isEmailVerified: true, emailVerificationToken: null },
+      select: { id: true, name: true, email: true, role: true, isEmailVerified: true }
+    });
+
+    res.json({ message: 'Email vérifié avec succès', user: verifiedUser });
+  } catch(err) { next(err); }
+});
+
+// ── RESEND VERIFICATION ──────────────────────────────────────────────────────
+router.post('/resend-verification', authenticate, async (req, res, next) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    if (user.isEmailVerified) return res.status(400).json({ error: 'Email déjà vérifié' });
+
+    const crypto = require('crypto');
+    const token = crypto.randomBytes(32).toString('hex');
+    
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { emailVerificationToken: token }
+    });
+
+    const APP_URL = process.env.APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
+    const verifyUrl = `${APP_URL}/verify-email?token=${token}`;
+    const { sendVerificationEmail } = require('../services/emailService');
+    await sendVerificationEmail({ name: user.name, email: user.email, verifyUrl });
+
+    res.json({ message: 'Email de vérification renvoyé' });
+  } catch(err) { next(err); }
 });
 
 module.exports = router;

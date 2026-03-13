@@ -57,6 +57,15 @@ const useStore = create(
     },
 
     // ── Accounts cache ──────────────────────────────────────────────────
+    accountTypes: [],
+    fetchAccountTypes: async () => {
+      try {
+        const { data } = await api.get('/account-types');
+        set({ accountTypes: data });
+        return data;
+      } catch (error) { console.error('Failed to fetch account types:', error); }
+    },
+
     accounts: [],
     fetchAccounts: async () => {
       try {
@@ -86,22 +95,16 @@ const useStore = create(
 
     /** Set account type filter and automatically select all accounts of that type */
     setFilterAccountType: (type) => {
-      const { accounts } = get();
+      const { accounts, accountTypes } = get();
       if (type === 'ALL') {
         set({ filterAccountType: 'ALL', filterAccountIds: [] });
         return;
       }
 
       const matches = accounts.filter(acc => {
-        const t = (acc.type || '').toUpperCase();
-        if (type === 'COURANT') return t === 'COURANT';
-        if (type === 'EPARGNE') {
-          return ['LIVRET_A', 'PEA', 'EPARGNE', 'LIVRET', 'PEL'].includes(t) || t.includes('EPARGNE') || t.includes('ÉPARGNE');
-        }
-        if (type === 'CREDIT') {
-          return ['CREDIT', 'CRÉDIT', 'LOA', 'CREDIT_CONSO'].includes(t) || t.includes('CREDIT') || t.includes('CRÉDIT');
-        }
-        return false;
+        const typeDef = accountTypes.find(t => t.id === acc.type);
+        const group = typeDef ? typeDef.group : null;
+        return group === type;
       });
 
       set({ 
@@ -131,13 +134,11 @@ const useStore = create(
 
       // Auto-update filterAccountType based on selection
       if (next.length > 0) {
+        const { accountTypes } = get();
         const selectedAccs = accounts.filter(a => next.includes(a.id));
         const types = new Set(selectedAccs.map(a => {
-          const t = (a.type || '').toUpperCase();
-          if (t === 'COURANT') return 'COURANT';
-          if (['LIVRET_A', 'PEA', 'EPARGNE', 'LIVRET', 'PEL'].includes(t) || t.includes('EPARGNE') || t.includes('ÉPARGNE')) return 'EPARGNE';
-          if (['CREDIT', 'CRÉDIT', 'LOA', 'CREDIT_CONSO'].includes(t) || t.includes('CREDIT') || t.includes('CRÉDIT')) return 'CREDIT';
-          return null;
+          const typeDef = accountTypes.find(t => t.id === a.type);
+          return typeDef ? typeDef.group : null;
         }));
 
         if (types.size === 1 && [...types][0] !== null) {
@@ -162,16 +163,11 @@ const useStore = create(
 
       // If no specific accounts selected, but a type is selected, filter accounts by type
       if (finalIds.length === 0 && filterAccountType !== 'ALL') {
+        const { accountTypes } = get();
         const matches = accounts.filter(acc => {
-          const t = (acc.type || '').toUpperCase();
-          if (filterAccountType === 'COURANT') return t === 'COURANT';
-          if (filterAccountType === 'EPARGNE') {
-            return ['LIVRET_A', 'PEA', 'EPARGNE', 'LIVRET', 'PEL'].includes(t) || t.includes('EPARGNE') || t.includes('ÉPARGNE');
-          }
-          if (filterAccountType === 'CREDIT') {
-            return ['CREDIT', 'CRÉDIT', 'LOA', 'CREDIT_CONSO'].includes(t) || t.includes('CREDIT') || t.includes('CRÉDIT');
-          }
-          return false;
+          const typeDef = accountTypes.find(t => t.id === acc.type);
+          const group = typeDef ? typeDef.group : null;
+          return group === filterAccountType;
         });
         finalIds = matches.map(a => a.id);
       }

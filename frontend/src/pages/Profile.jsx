@@ -22,6 +22,9 @@ const Profile = () => {
   const [cfmPwd,  setCfmPwd]  = useState('');
   const [pwdMsg,  setPwdMsg]  = useState('');
 
+  // Email Verification
+  const [resendMsg, setResendMsg] = useState('');
+
   // Misc
   const [deleteConfirm, setDeleteConfirm] = useState(false);
 
@@ -47,14 +50,31 @@ const Profile = () => {
   const handleChangePassword = async (e) => {
     e.preventDefault();
     setPwdMsg('');
+    const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+    
     if (newPwd !== cfmPwd) { setPwdMsg('❌ Les mots de passe ne correspondent pas'); return; }
-    if (newPwd.length < 8)  { setPwdMsg('❌ 8 caractères minimum'); return; }
+    if (!PASSWORD_REGEX.test(newPwd)) { 
+      setPwdMsg('❌ 8 caractères min, majuscule, minuscule, chiffre et caractère spécial.'); 
+      return; 
+    }
+    
     try {
       await api.post('/auth/change-password', { currentPassword: oldPwd, newPassword: newPwd });
       setPwdMsg('✅ Mot de passe mis à jour');
       setOldPwd(''); setNewPwd(''); setCfmPwd('');
     } catch (err) {
       setPwdMsg('❌ ' + (err.response?.data?.error || 'Erreur'));
+    }
+  };
+
+  const handleResendVerif = async () => {
+    try {
+      setResendMsg('Envoi...');
+      await api.post('/auth/resend-verification');
+      setResendMsg('✅ Email renvoyé');
+      setTimeout(() => setResendMsg(''), 4000);
+    } catch (err) {
+      setResendMsg('❌ ' + (err.response?.data?.error || 'Erreur'));
     }
   };
 
@@ -127,12 +147,24 @@ const Profile = () => {
               <div>
                 <div style={{ fontWeight: '700', fontSize: '1.25rem', color: 'var(--text-main)' }}>{user.name}</div>
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '0.25rem' }}>{user.email}</div>
-                <span className={`badge ${user.role === 'ADMIN' ? 'badge-info' : 'badge-success'}`}>{user.role}</span>
-                {user.googleId && (
-                  <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)', padding: '0.2rem 0.6rem', background: 'var(--bg-app)', borderRadius: '20px', border: '1px solid var(--border-light)' }}>
-                    🔗 Lié à Google
-                  </span>
-                )}
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <span className={`badge ${user.role === 'ADMIN' ? 'badge-info' : 'badge-success'}`}>{user.role}</span>
+                  {user.isEmailVerified ? (
+                    <span className="badge badge-success">Email Vérifié ✓</span>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span className="badge" style={{ background: 'var(--danger-bg)', color: 'var(--danger)' }}>Email Non Vérifié ⚠️</span>
+                      <button onClick={handleResendVerif} className="btn py-1 px-3 text-xs" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-light)' }}>
+                        {resendMsg || 'Renvoyer l\'email'}
+                      </button>
+                    </div>
+                  )}
+                  {user.googleId && (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: '0.2rem 0.6rem', background: 'var(--bg-app)', borderRadius: '20px', border: '1px solid var(--border-light)' }}>
+                      🔗 Lié à Google
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </Card>
