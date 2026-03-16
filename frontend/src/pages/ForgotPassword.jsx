@@ -3,10 +3,10 @@ import { Link } from 'react-router-dom';
 import api from '../api';
 
 const ForgotPassword = () => {
-  const [email, setEmail]   = useState('');
-  const [sent, setSent]     = useState(false);
+  const [email, setEmail]     = useState('');
+  const [sent, setSent]       = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError]   = useState('');
+  const [error, setError]     = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,68 +25,77 @@ const ForgotPassword = () => {
   return (
     <div style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'var(--bg-app)', padding: '2rem'
+      backgroundColor: 'var(--bg-app)',
     }}>
-      <div style={{ width: '100%', maxWidth: '420px' }}>
-        {/* Logo */}
+      <div style={{ width: '100%', maxWidth: '420px', padding: '1rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-          <div style={{ fontSize: '2rem', fontWeight: '800', letterSpacing: '-1px' }}>
-            <span style={{ color: 'var(--accent-primary)' }}>✦</span>
-            <span style={{ color: 'var(--text-main)', marginLeft: '0.5rem' }}>Clarify</span>
-          </div>
+          <svg width="48" height="48" viewBox="0 0 100 100" fill="none" style={{ margin: '0 auto 1rem' }}>
+            <defs>
+              <linearGradient id="registerGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#1A2B3C"/>
+                <stop offset="100%" stopColor="#2DE1C2"/>
+              </linearGradient>
+            </defs>
+            <path d="M15 80 Q25 60 40 50 Q55 40 65 25 Q72 15 80 10" stroke="url(#registerGrad)" strokeWidth="14" strokeLinecap="round" fill="none"/>
+            <circle cx="80" cy="10" r="8" fill="#2DE1C2"/>
+          </svg>
+          <h1 style={{ fontFamily: 'Inter', fontWeight: 800, fontSize: '2rem', color: 'var(--text-main)', marginBottom: '0.25rem' }}>clarify</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+            {sent ? 'Vérifiez votre boîte mail' : 'Retrouvez l\'accès à votre compte'}
+          </p>
         </div>
 
-        <div className="glass-card" style={{ padding: '2.5rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-light)' }}>
+        <div className="glass-card" style={{ padding: '2rem' }}>
           {sent ? (
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📧</div>
-              <h2 style={{ color: 'var(--text-main)', marginBottom: '1rem' }}>Email envoyé !</h2>
-              <p style={{ color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '1.5rem' }}>
-                Si <strong style={{ color: 'var(--text-main)' }}>{email}</strong> correspond à un compte, vous recevrez un lien de réinitialisation dans quelques instants. Vérifiez vos spams.
+              <div style={{ fontSize: 48, marginBottom: 16 }}>📧</div>
+              <h2 style={{ color: 'var(--text-main)', fontSize: '1.2rem', fontWeight: 700, marginBottom: 12 }}>Email envoyé !</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: 1.6, marginBottom: 20 }}>
+                Si <strong style={{ color: 'var(--accent-primary)' }}>{email}</strong> correspond à un compte, vous recevrez un lien de réinitialisation dans quelques instants.
               </p>
-              <Link to="/login" style={{ color: 'var(--accent-primary)', fontWeight: 600, textDecoration: 'none' }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', lineHeight: 1.5 }}>
+                Le lien est valable <strong style={{ color: 'var(--text-main)' }}>30 minutes</strong>. Pensez à vérifier vos spams.
+              </p>
+              <Link to="/login" className="btn btn-primary" style={{ display: 'block', marginTop: 24, width: '100%', padding: '0.8rem', textDecoration: 'none', textAlign: 'center' }}>
                 ← Retour à la connexion
               </Link>
             </div>
           ) : (
-            <>
-              <h2 style={{ color: 'var(--text-main)', fontWeight: 700, marginBottom: '0.5rem' }}>Mot de passe oublié</h2>
-              <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-                Entrez votre email et nous vous enverrons un lien de réinitialisation valable 30 minutes.
-              </p>
-
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {error && (
-                <div style={{ background: 'var(--danger-bg)', color: 'var(--danger)', padding: '0.75rem 1rem', borderRadius: '10px', marginBottom: '1rem', fontSize: '0.88rem' }}>
+                <div style={{ padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm)', background: 'var(--danger-bg)', color: 'var(--danger)', fontSize: '0.85rem' }}>
                   {error}
                 </div>
               )}
 
-              <form onSubmit={handleSubmit}>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--text-muted)' }}>
-                  Adresse email
-                </label>
-                <input
-                  type="email"
-                  className="input"
-                  placeholder="vous@exemple.com"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                  style={{ width: '100%', marginBottom: '1.25rem' }}
-                />
-                <button type="submit" className="btn btn-primary w-full" disabled={loading} style={{ width: '100%', height: '46px' }}>
-                  {loading ? 'Envoi en cours…' : 'Envoyer le lien'}
-                </button>
-              </form>
-
-              <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-                <Link to="/login" style={{ color: 'var(--text-muted)', fontSize: '0.88rem', textDecoration: 'none' }}>
-                  ← Retour à la connexion
-                </Link>
+              {/* Info banner */}
+              <div style={{ background: 'rgba(45,225,194,0.06)', border: '1px solid rgba(45,225,194,0.15)', borderRadius: 10, padding: '12px 16px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 16 }}>🔑</span>
+                <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                  Entrez votre adresse email et nous vous enverrons un lien pour <strong style={{ color: 'var(--accent-primary)' }}>réinitialiser votre mot de passe</strong>.
+                </p>
               </div>
-            </>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: '600', marginBottom: '0.4rem', color: 'var(--text-muted)' }}>Email</label>
+                <input className="input" type="email" value={email} onChange={e => setEmail(e.target.value)}
+                  placeholder="votre@email.fr" required style={{ width: '100%' }}/>
+              </div>
+              
+              <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', padding: '0.8rem', marginTop: '0.5rem' }}>
+                {loading ? 'Envoi en cours…' : '✉️ Envoyer le lien'}
+              </button>
+            </form>
           )}
         </div>
+
+        {!sent && (
+          <p style={{ textAlign: 'center', marginTop: '1.5rem', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
+            <Link to="/login" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>
+              ← Retour à la connexion
+            </Link>
+          </p>
+        )}
       </div>
     </div>
   );

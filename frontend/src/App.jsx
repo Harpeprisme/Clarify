@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import useStore from './store';
@@ -20,6 +20,9 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword  from './pages/ResetPassword';
 import VerifyEmail    from './pages/VerifyEmail';
 
+// Session timeout in ms (env var or default 10 minutes)
+const SESSION_TIMEOUT = parseInt(import.meta.env.VITE_SESSION_TIMEOUT || '600000', 10);
+
 // Real auth guard — redirects to /login if no user token
 const PrivateRoute = ({ children }) => {
   const user  = useStore(state => state.user);
@@ -36,6 +39,8 @@ const GuestRoute = ({ children }) => {
 
 const App = () => {
   const setUser = useStore(state => state.setUser);
+  const user    = useStore(state => state.user);
+  const timerRef = useRef(null);
 
   // On every app load, refresh the user profile from the server to get fresh role/data.
   useEffect(() => {
@@ -43,6 +48,13 @@ const App = () => {
     if (!token) return;
     api.get('/auth/me')
       .then(({ data }) => {
+        if (data.mustChangePassword) {
+          // Force them back to login to change password
+          localStorage.removeItem('openbank_token');
+          localStorage.removeItem('openbank_user');
+          setUser(null, null);
+          return;
+        }
         localStorage.setItem('openbank_user', JSON.stringify(data));
         setUser(data, token);
         useStore.getState().fetchAccountTypes();
@@ -53,6 +65,36 @@ const App = () => {
         setUser(null, null);
       });
   }, []);
+
+  // ── Auto-logout on inactivity ─────────────────────────────────────────────
+  const forceLogout = useCallback(() => {
+    localStorage.removeItem('openbank_token');
+    localStorage.removeItem('openbank_user');
+    setUser(null, null);
+    window.location.href = '/login?expired=1';
+  }, [setUser]);
+
+  const resetTimer = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(forceLogout, SESSION_TIMEOUT);
+  }, [forceLogout]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('openbank_token');
+    if (!user || !token) return;
+
+    // Start the idle timer
+    resetTimer();
+
+    // Reset on any user activity
+    const events = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+    events.forEach(evt => window.addEventListener(evt, resetTimer, { passive: true }));
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      events.forEach(evt => window.removeEventListener(evt, resetTimer));
+    };
+  }, [user, resetTimer]);
 
   return (
     <BrowserRouter>

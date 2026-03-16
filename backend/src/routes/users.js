@@ -36,19 +36,25 @@ router.post('/', async (req, res, next) => {
       return res.status(409).json({ error: 'Cet email est déjà utilisé' });
     }
 
-    // Generate a random temp password
-    const crypto = require('crypto');
-    const tempPassword = crypto.randomBytes(6).toString('base64url'); // ~8 chars, url-safe
-    const passwordHash = await bcrypt.hash(tempPassword, SALT_ROUNDS);
-
+    // Create user WITHOUT a password — they'll set it via the email link
     const user = await prisma.user.create({
-      data: { name, email, passwordHash, role: role || 'READER' },
+      data: { name, email, role: role || 'READER', mustChangePassword: true, isEmailVerified: true },
       select: { id: true, name: true, email: true, role: true }
     });
 
-    // Send welcome email with temp password (non-blocking)
+    // Generate a password reset token so they can set their password
+    const crypto = require('crypto');
+    const token = crypto.randomBytes(64).toString('hex');
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours for first setup
+
+    await prisma.passwordResetToken.create({ data: { token, userId: user.id, expiresAt } });
+
+    const APP_URL = process.env.APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
+    const setupUrl = `${APP_URL}/reset-password?token=${token}`;
+
+    // Send welcome email with the setup link (non-blocking)
     const { sendWelcomeEmail } = require('../services/emailService');
-    sendWelcomeEmail({ name, email, tempPassword }).catch(e => console.error('[Email] Welcome failed:', e.message));
+    sendWelcomeEmail({ name, email, setupUrl }).catch(e => console.error('[Email] Welcome failed:', e.message));
 
     res.status(201).json(user);
   } catch (error) {

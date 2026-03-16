@@ -141,6 +141,7 @@ router.patch('/:id', async (req, res, next) => {
     }
     if (categoryId  !== undefined) updateData.categoryId  = categoryId ? parseInt(categoryId) : null;
     if (notes       !== undefined) updateData.notes       = notes;
+    if (req.body.isPointed !== undefined) updateData.isPointed = Boolean(req.body.isPointed);
 
     const updated = await prisma.transaction.update({
       where: { id },

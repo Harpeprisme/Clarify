@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom';
 import useStore from '../store';
 
 const TopBar = () => {
-  const { darkMode, toggleDarkMode, user } = useStore();
+  const darkMode = useStore(state => state.darkMode);
+  const toggleDarkMode = useStore(state => state.toggleDarkMode);
+  const user = useStore(state => state.user);
 
   return (
     <header style={{

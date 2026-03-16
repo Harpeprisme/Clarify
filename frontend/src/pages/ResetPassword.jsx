@@ -60,9 +60,26 @@ const ResetPassword = () => {
           ) : (
             <>
               <h2 style={{ color: 'var(--text-main)', fontWeight: 700, marginBottom: '0.5rem' }}>Nouveau mot de passe</h2>
-              <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-                Choisissez un mot de passe sécurisé (8 caractères minimum).
+              <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.9rem' }}>
+                Choisissez un mot de passe sécurisé.
               </p>
+
+              {/* Password requirements */}
+              <div style={{ background: 'rgba(45,225,194,0.06)', border: '1px solid rgba(45,225,194,0.15)', borderRadius: 10, padding: '12px 16px', marginBottom: '1.25rem' }}>
+                <p style={{ margin: '0 0 8px', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Exigences du mot de passe</p>
+                {[
+                  { label: 'Au moins 8 caractères', ok: password.length >= 8 },
+                  { label: 'Une lettre majuscule (A-Z)', ok: /[A-Z]/.test(password) },
+                  { label: 'Une lettre minuscule (a-z)', ok: /[a-z]/.test(password) },
+                  { label: 'Un chiffre (0-9)', ok: /\d/.test(password) },
+                  { label: 'Un caractère spécial (!@#$…)', ok: /[\W_]/.test(password) },
+                ].map((r, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8rem', color: password ? (r.ok ? '#2DE1C2' : '#ff6b6b') : 'var(--text-muted)', marginTop: 4, transition: 'color 0.2s' }}>
+                    <span style={{ fontSize: 12 }}>{password ? (r.ok ? '✅' : '❌') : '○'}</span>
+                    {r.label}
+                  </div>
+                ))}
+              </div>
 
               {!token && (
                 <div style={{ background: 'var(--danger-bg)', color: 'var(--danger)', padding: '0.75rem 1rem', borderRadius: '10px', marginBottom: '1rem', fontSize: '0.88rem' }}>
@@ -104,9 +121,15 @@ const ResetPassword = () => {
                     required
                     style={{ width: '100%' }}
                   />
+                  {confirm && confirm !== password && (
+                    <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: '#ff6b6b' }}>❌ Les mots de passe ne correspondent pas</p>
+                  )}
+                  {confirm && confirm === password && password.length > 0 && (
+                    <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: '#2DE1C2' }}>✅ Les mots de passe correspondent</p>
+                  )}
                 </div>
                 <button type="submit" className="btn btn-primary" disabled={loading || !token} style={{ width: '100%', height: '46px' }}>
-                  {loading ? 'Enregistrement…' : 'Mettre à jour le mot de passe'}
+                  {loading ? 'Enregistrement…' : '🔐 Créer mon mot de passe'}
                 </button>
               </form>
             </>

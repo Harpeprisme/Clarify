@@ -62,18 +62,17 @@ const p  = (t) => `<p style="color:#8BA3BC;font-size:15px;line-height:1.6;margin
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Welcome email sent when a new user account is created */
-const welcomeTemplate = ({ name, email, tempPassword }) => layout(`
+const welcomeTemplate = ({ name, email, setupUrl }) => layout(`
   ${h1('Bienvenue sur ' + APP_NAME + ' 👋')}
   ${p('Bonjour <strong style="color:#fff;">' + name + '</strong>,')}
   ${p('Un compte vient d\'être créé pour vous sur ' + APP_NAME + ', votre application de suivi financier personnelle.')}
   <div style="background:#0D1B2A;border-radius:12px;padding:20px;margin:20px 0;border:1px solid rgba(45,225,194,0.2);">
-    <p style="color:#8BA3BC;font-size:13px;margin:0 0 8px;text-transform:uppercase;letter-spacing:1px;">Vos identifiants</p>
+    <p style="color:#8BA3BC;font-size:13px;margin:0 0 8px;text-transform:uppercase;letter-spacing:1px;">Votre identifiant</p>
     <p style="color:#fff;font-size:15px;margin:4px 0;"><strong>Email :</strong> ${email}</p>
-    ${tempPassword ? `<p style="color:#fff;font-size:15px;margin:4px 0;"><strong>Mot de passe temporaire :</strong> <code style="background:#162032;padding:2px 8px;border-radius:6px;color:#2DE1C2;">${tempPassword}</code></p>` : ''}
   </div>
-  ${p('Pensez à changer votre mot de passe dès votre première connexion.')}
-  ${btn(APP_URL, 'Accéder à ' + APP_NAME)}
-  ${p('<small style="color:#4A6582;">Si vous n\'êtes pas à l\'origine de cette création, ignorez cet email.</small>')}
+  ${p('Pour accéder à votre espace, vous devez d\'abord créer votre mot de passe personnel en cliquant sur le bouton ci-dessous.')}
+  ${btn(setupUrl, 'Créer mon mot de passe')}
+  ${p('<small style="color:#4A6582;">Ce lien est valable 24 heures. Si vous n\'êtes pas à l\'origine de cette création, ignorez cet email.</small>')}
 `);
 
 /** Password reset email */
@@ -155,8 +154,8 @@ async function sendMail({ to, subject, html }) {
   }
 }
 
-const sendWelcomeEmail = ({ name, email, tempPassword }) =>
-  sendMail({ to: email, subject: `Bienvenue sur ${APP_NAME} 🎉`, html: welcomeTemplate({ name, email, tempPassword }) });
+const sendWelcomeEmail = ({ name, email, setupUrl }) =>
+  sendMail({ to: email, subject: `Bienvenue sur ${APP_NAME} 🎉`, html: welcomeTemplate({ name, email, setupUrl }) });
 
 const sendPasswordResetEmail = ({ name, email, resetUrl }) =>
   sendMail({ to: email, subject: `Réinitialisation de votre mot de passe ${APP_NAME}`, html: resetPasswordTemplate({ name, resetUrl }) });

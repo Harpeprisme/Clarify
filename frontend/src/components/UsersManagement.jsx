@@ -9,7 +9,7 @@ const UsersManagement = () => {
 
   // Add User Form
   const [showAdd, setShowAdd] = useState(false);
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'READER' });
+  const [formData, setFormData] = useState({ name: '', email: '', role: 'READER' });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -38,9 +38,9 @@ const UsersManagement = () => {
     e.preventDefault();
     setSaving(true);
     try {
-      await createUser(formData);
-      showMsg('Collaborateur ajouté avec succès');
-      setFormData({ name: '', email: '', password: '', role: 'READER' });
+      await createUser({ name: formData.name, email: formData.email, role: formData.role });
+      showMsg(`Compte créé ! Un email avec le mot de passe temporaire a été envoyé à ${formData.email}.`);
+      setFormData({ name: '', email: '', role: 'READER' });
       setShowAdd(false);
       fetchUsers();
     } catch (err) {
@@ -75,6 +75,15 @@ const UsersManagement = () => {
     }
   };
 
+  const handleResetPassword = async (email, name) => {
+    try {
+      await api.post('/auth/forgot-password', { email });
+      showMsg(`✉️ Un email de réinitialisation a été envoyé à ${name} (${email}).`);
+    } catch (err) {
+      showMsg('Erreur lors de l\'envoi', 'danger');
+    }
+  };
+
   return (
     <div className="flex-col gap-6">
       <div className="flex justify-between items-center mb-4">
@@ -100,6 +109,15 @@ const UsersManagement = () => {
       {showAdd && (
         <Card title="Recruter un collaborateur" style={{ border: '1px solid var(--accent-primary)40' }}>
           <form onSubmit={handleAddUser} className="flex-col gap-4">
+
+            {/* Info notice */}
+            <div style={{ background: 'rgba(45,225,194,0.08)', border: '1px solid rgba(45,225,194,0.25)', borderRadius: 12, padding: '12px 16px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <span style={{ fontSize: 18 }}>✉️</span>
+              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                Un <strong style={{ color: 'var(--accent-primary)' }}>lien de création de mot de passe</strong> sera automatiquement envoyé par email. La personne pourra définir son mot de passe en cliquant sur le lien (valable 24h).
+              </p>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
               <div className="flex-col gap-1">
                 <label className="text-[10px] font-bold text-muted ml-1 uppercase">Nom Complet</label>
@@ -111,23 +129,17 @@ const UsersManagement = () => {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-              <div className="flex-col gap-1">
-                <label className="text-[10px] font-bold text-muted ml-1 uppercase">Mot de passe temporaire</label>
-                <input type="password" className="input" placeholder="********" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required />
-              </div>
-              <div className="flex-col gap-1">
-                <label className="text-[10px] font-bold text-muted ml-1 uppercase">Rôle</label>
-                <select className="input" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
-                  <option value="READER">Utilisateur (Lecture/Écriture)</option>
-                  <option value="ADMIN">Administrateur (Gestion équipe)</option>
-                </select>
-              </div>
+            <div className="flex-col gap-1">
+              <label className="text-[10px] font-bold text-muted ml-1 uppercase">Rôle</label>
+              <select className="input" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
+                <option value="READER">Utilisateur (Lecture / Écriture)</option>
+                <option value="ADMIN">Administrateur (Gestion équipe)</option>
+              </select>
             </div>
 
             <div className="flex gap-2 mt-2">
               <button type="submit" className="btn btn-primary px-8" style={{ flex: 1 }} disabled={saving}>
-                {saving ? '…' : 'Valider la création'}
+                {saving ? 'Envoi en cours…' : '✉️ Créer et envoyer l\'invitation'}
               </button>
               <button type="button" className="btn btn-outline" style={{ flex: 0.4 }} onClick={() => setShowAdd(false)}>
                 Annuler
@@ -184,6 +196,9 @@ const UsersManagement = () => {
                 </td>
                 <td style={{ padding: '1rem', textAlign: 'right' }}>
                   <div className="flex gap-2 justify-end">
+                    <button className="btn btn-outline" style={{ padding: '0.35rem 0.6rem', fontSize: '0.7rem', borderRadius: '8px' }} onClick={() => handleResetPassword(u.email, u.name)} title="Envoyer un email de reset">
+                      🔑 Reset MDP
+                    </button>
                     <button className="btn btn-outline" style={{ padding: '0.35rem 0.6rem', fontSize: '0.7rem', borderRadius: '8px' }} onClick={() => handleToggleRole(u)}>
                       ⚡ Rôle
                     </button>

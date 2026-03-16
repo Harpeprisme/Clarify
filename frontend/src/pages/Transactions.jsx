@@ -117,6 +117,18 @@ const Transactions = () => {
     } catch (err) { console.error(err); }
   };
 
+  const togglePointed = async (tx) => {
+    try {
+      const newStatus = !tx.isPointed;
+      // Optimistic UI update
+      setTransactions(prev => prev.map(t => t.id === tx.id ? { ...t, isPointed: newStatus } : t));
+      await api.patch(`/transactions/${tx.id}`, { isPointed: newStatus });
+    } catch (err) {
+      console.error(err);
+      fetchTransactions(); // Revert on failure
+    }
+  };
+
   const handleAdd = async (e) => {
     e.preventDefault();
     setAddSaving(true);
@@ -216,6 +228,7 @@ const Transactions = () => {
           <table className="tx-table">
             <thead>
               <tr>
+                <th style={{ width: '40px', textAlign: 'center' }} title="Pointage">✓</th>
                 <th>Date</th>
                 <th style={{ width: '30%' }}>Description</th>
                 <th>Compte</th>
@@ -234,8 +247,24 @@ const Transactions = () => {
                 const isDeleting = deletingId === tx.id;
 
                 return (
-                  <tr key={tx.id} style={{ transition: 'background-color 0.15s' }}
+                  <tr key={tx.id} style={{ transition: 'all 0.15s', opacity: tx.isPointed ? 0.6 : 1, backgroundColor: tx.isPointed ? 'rgba(0,0,0,0.02)' : '' }}
                     className={isEditing ? 'is-editing' : isDeleting ? 'is-deleting' : 'hover-bg'}>
+
+                    {/* POINTAGE */}
+                    <td style={{ textAlign: 'center' }}>
+                      <button 
+                        onClick={() => togglePointed(tx)}
+                        style={{
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          fontSize: '1.2rem', padding: '0 4px',
+                          color: tx.isPointed ? 'var(--success)' : 'var(--border-light)',
+                          transition: 'color 0.2s'
+                        }}
+                        title={tx.isPointed ? 'Dépointer' : 'Pointer'}
+                      >
+                        {tx.isPointed ? '✓' : '○'}
+                      </button>
+                    </td>
 
                     {/* DATE */}
                     <td>

@@ -16,10 +16,7 @@ const Profile = () => {
   const [name,    setName]    = useState(user?.name || '');
   const [nameMsg, setNameMsg] = useState('');
 
-  // Password change
-  const [oldPwd,  setOldPwd]  = useState('');
-  const [newPwd,  setNewPwd]  = useState('');
-  const [cfmPwd,  setCfmPwd]  = useState('');
+  // Password reset
   const [pwdMsg,  setPwdMsg]  = useState('');
 
   // Email Verification
@@ -47,25 +44,6 @@ const Profile = () => {
     }
   };
 
-  const handleChangePassword = async (e) => {
-    e.preventDefault();
-    setPwdMsg('');
-    const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[\W_]).{8,}$/;
-    
-    if (newPwd !== cfmPwd) { setPwdMsg('❌ Les mots de passe ne correspondent pas'); return; }
-    if (!PASSWORD_REGEX.test(newPwd)) { 
-      setPwdMsg('❌ 8 caractères min, majuscule, minuscule, chiffre et caractère spécial.'); 
-      return; 
-    }
-    
-    try {
-      await api.post('/auth/change-password', { currentPassword: oldPwd, newPassword: newPwd });
-      setPwdMsg('✅ Mot de passe mis à jour');
-      setOldPwd(''); setNewPwd(''); setCfmPwd('');
-    } catch (err) {
-      setPwdMsg('❌ ' + (err.response?.data?.error || 'Erreur'));
-    }
-  };
 
   const handleResendVerif = async () => {
     try {
@@ -79,8 +57,10 @@ const Profile = () => {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('openbank_token');
+    localStorage.removeItem('openbank_user');
     setUser(null, null);
-    navigate('/login');
+    window.location.href = '/login';
   };
 
   const handleDeleteAccount = async () => {
@@ -185,36 +165,54 @@ const Profile = () => {
             </form>
           </Card>
 
-          {/* Change Password */}
-          <Card title="Sécurité — Changer de mot de passe" style={{ marginBottom: '1.5rem' }}>
-            {pwdMsg && (
-              <div style={{ marginBottom: '1rem', padding: '0.65rem 1rem', borderRadius: 'var(--radius-sm)', background: pwdMsg.startsWith('✅') ? 'var(--success-bg)' : 'var(--danger-bg)', color: pwdMsg.startsWith('✅') ? 'var(--success)' : 'var(--danger)', fontSize: '0.88rem' }}>
-                {pwdMsg}
-              </div>
-            )}
-            <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {!user.googleId || user.passwordHash ? (
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: '600', marginBottom: '0.4rem', color: 'var(--text-muted)' }}>Mot de passe actuel</label>
-                  <input className="input" type="password" value={oldPwd} onChange={e => setOldPwd(e.target.value)} style={{ width: '100%' }}/>
+          {/* Security */}
+          <Card title="🔒 Sécurité" style={{ marginBottom: '1.5rem' }}>
+            {/* Security features explanation */}
+            <div style={{ display: 'grid', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              {[
+                { icon: '🔐', label: 'Mots de passe chiffrés', desc: 'Hashés avec bcrypt (12 rounds), jamais stockés en clair.' },
+                { icon: '⏱️', label: 'Session sécurisée', desc: 'Déconnexion automatique après 10 min d\'inactivité. Token JWT signé.' },
+                { icon: '🛡️', label: 'Anti-DDoS & Rate Limiting', desc: '100 requêtes/min max. Les tentatives de connexion sont limitées à 5/15 min.' },
+                { icon: '🚫', label: 'Anti-Brute-Force', desc: 'Compte verrouillé 15 min après 5 tentatives échouées.' },
+                { icon: '🧹', label: 'Anti-Injection', desc: 'Toutes les entrées sont nettoyées contre les attaques XSS et NoSQL.' },
+                { icon: user?.isEmailVerified ? '✅' : '⚠️', label: user?.isEmailVerified ? 'Email vérifié' : 'Email non vérifié', desc: user?.isEmailVerified ? `Votre adresse ${user.email} est vérifiée.` : 'Vérifiez votre email pour renforcer la sécurité de votre compte.' },
+              ].map((item, i) => (
+                <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 14px', background: 'rgba(45,225,194,0.04)', borderRadius: 10, border: '1px solid rgba(45,225,194,0.08)' }}>
+                  <span style={{ fontSize: 20, flexShrink: 0, marginTop: 2 }}>{item.icon}</span>
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-main)' }}>{item.label}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>{item.desc}</p>
+                  </div>
                 </div>
-              ) : (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>Définissez un mot de passe pour utiliser l'application sans Google.</p>
+              ))}
+            </div>
+
+            {/* Reset password button */}
+            <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '1.25rem' }}>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                Pour modifier votre mot de passe, un lien de réinitialisation sera envoyé à <strong style={{ color: 'var(--text-main)' }}>{user.email}</strong>.
+              </p>
+              {pwdMsg && (
+                <div style={{ marginBottom: '0.75rem', padding: '0.65rem 1rem', borderRadius: 'var(--radius-sm)', background: pwdMsg.startsWith('✅') ? 'var(--success-bg)' : 'var(--danger-bg)', color: pwdMsg.startsWith('✅') ? 'var(--success)' : 'var(--danger)', fontSize: '0.88rem' }}>
+                  {pwdMsg}
+                </div>
               )}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: '600', marginBottom: '0.4rem', color: 'var(--text-muted)' }}>Nouveau mot de passe</label>
-                  <input className="input" type="password" value={newPwd} onChange={e => setNewPwd(e.target.value)} placeholder="8 caractères min." style={{ width: '100%' }}/>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: '600', marginBottom: '0.4rem', color: 'var(--text-muted)' }}>Confirmation</label>
-                  <input className="input" type="password" value={cfmPwd} onChange={e => setCfmPwd(e.target.value)} placeholder="••••••••" style={{ width: '100%' }}/>
-                </div>
-              </div>
-              <div>
-                <button type="submit" className="btn btn-primary">Mettre à jour le mot de passe</button>
-              </div>
-            </form>
+              <button
+                className="btn btn-outline"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                onClick={async () => {
+                  setPwdMsg('');
+                  try {
+                    await api.post('/auth/forgot-password', { email: user.email });
+                    setPwdMsg('✅ Un email de réinitialisation a été envoyé. Vérifiez votre boîte mail.');
+                  } catch (err) {
+                    setPwdMsg('❌ ' + (err.response?.data?.error || 'Erreur'));
+                  }
+                }}
+              >
+                ✉️ Réinitialiser mon mot de passe par email
+              </button>
+            </div>
           </Card>
 
           {/* Danger Zone */}

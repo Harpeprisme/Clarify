@@ -85,7 +85,9 @@ const useStore = create(
     // [] means "all accounts selected"
     filterAccountIds: [],
     // 'ALL' | 'COURANT' | 'EPARGNE' | 'CREDIT'
-    filterAccountType: 'ALL',
+    // Global comparative benchmark for Bourse module
+    customBenchmarkTicker: '^GSPC', // Default to S&P 500
+    setCustomBenchmarkTicker: (ticker) => set({ customBenchmarkTicker: ticker }),
 
     /** Set a named preset (updates dates automatically) */
     setFilterPreset: (preset) => {

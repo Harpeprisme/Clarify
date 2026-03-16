@@ -15,7 +15,13 @@ const Budget = () => {
   const [expenses, setExpenses] = useState({});
   const [loading, setLoading] = useState(true);
   
-  const { getFilterParams, filterPreset, filterDateFrom, filterDateTo, filterAccountIds, filterAccountType, accounts } = useStore();
+  const getFilterParams = useStore(state => state.getFilterParams);
+  const filterPreset = useStore(state => state.filterPreset);
+  const filterDateFrom = useStore(state => state.filterDateFrom);
+  const filterDateTo = useStore(state => state.filterDateTo);
+  const filterAccountIds = useStore(state => state.filterAccountIds);
+  const filterAccountType = useStore(state => state.filterAccountType);
+  const accounts = useStore(state => state.accounts);
 
   useEffect(() => {
     fetchData();

@@ -5,60 +5,64 @@ const jwt     = require('jsonwebtoken');
 const prisma  = require('../config/prisma');
 const passport = require('../config/passport');
 const { authenticate } = require('../middleware/auth');
+const { authLimiter, createAccountLimiter, resetLimiter } = require('../middleware/security');
+
+// In-memory failed login tracker (IP + email)
+const failedAttempts = new Map();
+const MAX_FAILED = 5;
+const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
 
 const SALT_ROUNDS = 12;
 const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[\W_]).{8,}$/;
 const PWD_ERR_MSG = "Le mot de passe doit contenir au moins 8 caractères, dont une majuscule, une minuscule, un chiffre et un caractère spécial.";
 
+// Session timeout in seconds (env var in ms, default 10 min = 600000ms)
+const SESSION_TIMEOUT_SEC = Math.floor(parseInt(process.env.SESSION_TIMEOUT || '600000', 10) / 1000);
+
 /** Generate a signed JWT for a user */
 const signToken = (userId) =>
-  jwt.sign({ userId }, process.env.JWT_SECRET || 'temporary_dev_secret_change_me_in_prod', { expiresIn: '7d' });
+  jwt.sign({ userId }, process.env.JWT_SECRET || 'temporary_dev_secret_change_me_in_prod', { expiresIn: `${SESSION_TIMEOUT_SEC}s` });
 
 // ── REGISTER ────────────────────────────────────────────────────────────────
-router.post('/register', async (req, res, next) => {
+router.post('/register', createAccountLimiter, async (req, res, next) => {
   try {
-    let { name, email, password } = req.body;
+    let { name, email } = req.body;
 
-    if (!name || !email || !password)
-      return res.status(400).json({ error: 'Nom, email et mot de passe requis' });
-
-    if (!PASSWORD_REGEX.test(password))
-      return res.status(400).json({ error: PWD_ERR_MSG });
+    if (!name || !email)
+      return res.status(400).json({ error: 'Nom et email requis' });
 
     email = email.trim().toLowerCase();
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing)
       return res.status(409).json({ error: 'Un compte avec cet email existe déjà' });
 
-    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-
     // Force ADMIN role for specific email or first user
     const count = await prisma.user.count();
     const role  = (email === 'admin@clarify.app' || count === 0) ? 'ADMIN' : 'READER';
 
-    // Generate Verification Token
-    const crypto = require('crypto');
-    const emailVerificationToken = crypto.randomBytes(32).toString('hex');
-    const isEmailVerified = (email === 'admin@clarify.app'); // Auto-verify admin
-
     const user = await prisma.user.create({
-      data: { name, email, passwordHash, role, emailVerificationToken, isEmailVerified },
-      select: { id: true, name: true, email: true, role: true, avatarUrl: true, isEmailVerified: true }
+      data: { name, email, role, mustChangePassword: true },
+      select: { id: true, name: true, email: true, role: true }
     });
 
-    if (!isEmailVerified) {
-      const APP_URL = process.env.APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
-      const verifyUrl = `${APP_URL}/verify-email?token=${emailVerificationToken}`;
-      const { sendVerificationEmail } = require('../services/emailService');
-      sendVerificationEmail({ name: user.name, email: user.email, verifyUrl }).catch(err => console.error("Email error:", err));
-    }
+    // Generate a password setup token (24h validity)
+    const crypto = require('crypto');
+    const token = crypto.randomBytes(64).toString('hex');
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await prisma.passwordResetToken.create({ data: { token, userId: user.id, expiresAt } });
 
-    res.status(201).json({ token: signToken(user.id), user });
+    const APP_URL = process.env.APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
+    const setupUrl = `${APP_URL}/reset-password?token=${token}`;
+
+    const { sendWelcomeEmail } = require('../services/emailService');
+    sendWelcomeEmail({ name, email, setupUrl }).catch(e => console.error('[Email] Welcome failed:', e.message));
+
+    res.status(201).json({ success: true, message: 'Compte créé ! Vérifiez votre boîte mail pour définir votre mot de passe.' });
   } catch (err) { next(err); }
 });
 
 // ── LOGIN ────────────────────────────────────────────────────────────────────
-router.post('/login', async (req, res, next) => {
+router.post('/login', authLimiter, async (req, res, next) => {
   try {
     let { email, password } = req.body;
 
@@ -66,16 +70,34 @@ router.post('/login', async (req, res, next) => {
       return res.status(400).json({ error: 'Email et mot de passe requis' });
 
     email = email.trim().toLowerCase();
+
+    // Check account lockout
+    const key = `${req.ip}_${email}`;
+    const attempts = failedAttempts.get(key);
+    if (attempts && attempts.count >= MAX_FAILED && (Date.now() - attempts.lastAttempt) < LOCKOUT_MS) {
+      const remaining = Math.ceil((LOCKOUT_MS - (Date.now() - attempts.lastAttempt)) / 60000);
+      return res.status(429).json({ error: `Compte temporairement verrouillé. Réessayez dans ${remaining} minute(s).` });
+    }
+
     const user = await prisma.user.findUnique({ where: { email } });
 
-    if (!user || !user.passwordHash)
+    if (!user || !user.passwordHash) {
+      const prev = failedAttempts.get(key) || { count: 0 };
+      failedAttempts.set(key, { count: prev.count + 1, lastAttempt: Date.now() });
       return res.status(401).json({ error: 'Identifiants invalides' });
+    }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid)
+    if (!valid) {
+      const prev = failedAttempts.get(key) || { count: 0 };
+      failedAttempts.set(key, { count: prev.count + 1, lastAttempt: Date.now() });
       return res.status(401).json({ error: 'Identifiants invalides' });
+    }
 
-    const safeUser = { id: user.id, name: user.name, email: user.email, role: user.role, avatarUrl: user.avatarUrl, googleId: user.googleId, isEmailVerified: user.isEmailVerified };
+    // Success — clear failed attempts
+    failedAttempts.delete(key);
+
+    const safeUser = { id: user.id, name: user.name, email: user.email, role: user.role, avatarUrl: user.avatarUrl, googleId: user.googleId, isEmailVerified: user.isEmailVerified, mustChangePassword: !!user.mustChangePassword };
     res.json({ token: signToken(user.id), user: safeUser });
   } catch (err) { next(err); }
 });
@@ -105,7 +127,7 @@ router.post('/change-password', authenticate, async (req, res, next) => {
     }
 
     const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
-    await prisma.user.update({ where: { id: req.user.id }, data: { passwordHash } });
+    await prisma.user.update({ where: { id: req.user.id }, data: { passwordHash, mustChangePassword: false } });
 
     res.json({ message: 'Mot de passe mis à jour avec succès' });
   } catch (err) { next(err); }
@@ -168,7 +190,7 @@ router.get('/google/callback', (req, res, next) => {
 });
 
 // ── FORGOT PASSWORD ──────────────────────────────────────────────────────────
-router.post('/forgot-password', async (req, res, next) => {
+router.post('/forgot-password', resetLimiter, async (req, res, next) => {
   try {
     let { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email requis' });
@@ -218,7 +240,7 @@ router.post('/reset-password', async (req, res, next) => {
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
     await prisma.$transaction([
-      prisma.user.update({ where: { id: record.userId }, data: { passwordHash } }),
+      prisma.user.update({ where: { id: record.userId }, data: { passwordHash, mustChangePassword: false } }),
       prisma.passwordResetToken.update({ where: { id: record.id }, data: { used: true } })
     ]);
 

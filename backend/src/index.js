@@ -7,12 +7,15 @@ dotenv.config();
 
 const passport = require('./config/passport');
 const { authenticate } = require('./middleware/auth');
+const { securityHeaders, globalLimiter, authLimiter, createAccountLimiter, resetLimiter, sanitizeInput } = require('./middleware/security');
 
 const app = express();
-app.enable('trust proxy'); // Required for OAuth behind Railway/Render/Heroku reverse proxies
+app.set('trust proxy', 1); // Required for OAuth and rate-limiting behind reverse proxies
 const PORT = process.env.PORT || 3001;
 
-
+// ── 1. Security Headers & Rate Limiting ─────────────────────────────────────
+app.use(securityHeaders);
+app.use(globalLimiter);
 
 // ── 2. CORS Configuration ───────────────────────────────────────────────────
 const allowedOrigins = [
@@ -36,7 +39,10 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// ── 3. Session & Passport ───────────────────────────────────────────────────
+// ── 3. Input Sanitization (anti-injection) ──────────────────────────────────
+app.use(sanitizeInput);
+
+// ── 4. Session & Passport ───────────────────────────────────────────────────
 app.use(session({
   secret: process.env.SESSION_SECRET || 'fallback_secret',
   resave: false,

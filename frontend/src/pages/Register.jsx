@@ -1,36 +1,21 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import api from '../api';
-import useStore from '../store';
 
 const Register = () => {
-  const navigate = useNavigate();
-  const setUser  = useStore(s => s.setUser);
-
-  const [name,     setName]     = useState('');
-  const [email,    setEmail]    = useState('');
-  const [password, setPassword] = useState('');
-  const [confirm,  setConfirm]  = useState('');
-  const [error,    setError]    = useState('');
-  const [loading,  setLoading]  = useState(false);
+  const [name,    setName]    = useState('');
+  const [email,   setEmail]   = useState('');
+  const [error,   setError]   = useState('');
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (password !== confirm) {
-      setError('Les mots de passe ne correspondent pas');
-      return;
-    }
-    const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[\W_]).{8,}$/;
-    if (!PASSWORD_REGEX.test(password)) {
-      setError('Le mot de passe doit contenir 8 caractères min., majuscule, minuscule, chiffre et caractère spécial.');
-      return;
-    }
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/register', { name, email, password });
-      setUser(data.user, data.token);
-      navigate('/dashboard', { replace: true });
+      await api.post('/auth/register', { name, email });
+      setSuccess(true);
     } catch (err) {
       setError(err.response?.data?.error || 'Erreur lors de la création du compte');
     } finally {
@@ -56,48 +41,69 @@ const Register = () => {
             <circle cx="80" cy="10" r="8" fill="#2DE1C2"/>
           </svg>
           <h1 style={{ fontFamily: 'Inter', fontWeight: 800, fontSize: '2rem', color: 'var(--text-main)', marginBottom: '0.25rem' }}>clarify</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Créez votre espace personnel</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+            {success ? 'Vérifiez votre boîte mail' : 'Créez votre espace personnel'}
+          </p>
         </div>
 
         <div className="glass-card" style={{ padding: '2rem' }}>
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {error && (
-              <div style={{ padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm)', background: 'var(--danger-bg)', color: 'var(--danger)', fontSize: '0.85rem' }}>
-                {error}
+          {success ? (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>📧</div>
+              <h2 style={{ color: 'var(--text-main)', fontSize: '1.2rem', fontWeight: 700, marginBottom: 12 }}>
+                Compte créé avec succès !
+              </h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: 1.6, marginBottom: 20 }}>
+                Un email a été envoyé à <strong style={{ color: 'var(--accent-primary)' }}>{email}</strong> avec un lien pour créer votre mot de passe.
+              </p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', lineHeight: 1.5 }}>
+                Le lien est valable <strong style={{ color: 'var(--text-main)' }}>24 heures</strong>. Pensez à vérifier vos spams.
+              </p>
+              <Link to="/login" className="btn btn-primary" style={{ display: 'block', marginTop: 24, width: '100%', padding: '0.8rem', textDecoration: 'none', textAlign: 'center' }}>
+                ← Retour à la connexion
+              </Link>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {error && (
+                <div style={{ padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm)', background: 'var(--danger-bg)', color: 'var(--danger)', fontSize: '0.85rem' }}>
+                  {error}
+                </div>
+              )}
+
+              {/* Info banner */}
+              <div style={{ background: 'rgba(45,225,194,0.06)', border: '1px solid rgba(45,225,194,0.15)', borderRadius: 10, padding: '12px 16px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 16 }}>✉️</span>
+                <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                  Un lien pour <strong style={{ color: 'var(--accent-primary)' }}>créer votre mot de passe</strong> sera envoyé à votre adresse email.
+                </p>
               </div>
-            )}
-            <div>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: '600', marginBottom: '0.4rem', color: 'var(--text-muted)' }}>Nom complet</label>
-              <input className="input" type="text" value={name} onChange={e => setName(e.target.value)}
-                placeholder="Jean Dupont" required style={{ width: '100%' }}/>
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: '600', marginBottom: '0.4rem', color: 'var(--text-muted)' }}>Email</label>
-              <input className="input" type="email" value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="votre@email.fr" required style={{ width: '100%' }}/>
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: '600', marginBottom: '0.4rem', color: 'var(--text-muted)' }}>Mot de passe</label>
-              <input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)}
-                placeholder="8 caractères minimum" required style={{ width: '100%' }}/>
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: '600', marginBottom: '0.4rem', color: 'var(--text-muted)' }}>Confirmer le mot de passe</label>
-              <input className="input" type="password" value={confirm} onChange={e => setConfirm(e.target.value)}
-                placeholder="••••••••" required style={{ width: '100%' }}/>
-            </div>
-            <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', padding: '0.8rem', marginTop: '0.5rem' }}>
-              {loading ? 'Création…' : 'Créer mon compte'}
-            </button>
-          </form>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: '600', marginBottom: '0.4rem', color: 'var(--text-muted)' }}>Nom complet</label>
+                <input className="input" type="text" value={name} onChange={e => setName(e.target.value)}
+                  placeholder="Jean Dupont" required style={{ width: '100%' }}/>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: '600', marginBottom: '0.4rem', color: 'var(--text-muted)' }}>Email</label>
+                <input className="input" type="email" value={email} onChange={e => setEmail(e.target.value)}
+                  placeholder="votre@email.fr" required style={{ width: '100%' }}/>
+              </div>
+              <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', padding: '0.8rem', marginTop: '0.5rem' }}>
+                {loading ? 'Envoi en cours…' : '✉️ Créer mon compte'}
+              </button>
+            </form>
+          )}
         </div>
 
-        <p style={{ textAlign: 'center', marginTop: '1.5rem', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
-          Déjà un compte ?{' '}
-          <Link to="/login" style={{ color: 'var(--accent-primary)', fontWeight: '600', textDecoration: 'none' }}>
-            Se connecter
-          </Link>
-        </p>
+        {!success && (
+          <p style={{ textAlign: 'center', marginTop: '1.5rem', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
+            Déjà un compte ?{' '}
+            <Link to="/login" style={{ color: 'var(--accent-primary)', fontWeight: '600', textDecoration: 'none' }}>
+              Se connecter
+            </Link>
+          </p>
+        )}
       </div>
     </div>
   );

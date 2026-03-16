@@ -19,12 +19,17 @@ const ACCOUNT_TYPES = [
 ];
 
 const GlobalFilterBar = () => {
-  const {
-    filterPreset, filterDateFrom, filterDateTo, filterAccountIds, filterAccountType,
-    setFilterPreset, setFilterCustomRange, setFilterAccountType,
-    toggleFilterAccount, clearFilterAccounts,
-    accounts,
-  } = useStore();
+  const filterPreset = useStore(state => state.filterPreset);
+  const filterDateFrom = useStore(state => state.filterDateFrom);
+  const filterDateTo = useStore(state => state.filterDateTo);
+  const filterAccountIds = useStore(state => state.filterAccountIds);
+  const filterAccountType = useStore(state => state.filterAccountType);
+  const setFilterPreset = useStore(state => state.setFilterPreset);
+  const setFilterCustomRange = useStore(state => state.setFilterCustomRange);
+  const setFilterAccountType = useStore(state => state.setFilterAccountType);
+  const toggleFilterAccount = useStore(state => state.toggleFilterAccount);
+  const clearFilterAccounts = useStore(state => state.clearFilterAccounts);
+  const accounts = useStore(state => state.accounts);
 
   const [showCustom, setShowCustom] = useState(filterPreset === 'CUSTOM');
   const [customFrom, setCustomFrom] = useState(filterDateFrom);
@@ -64,7 +69,7 @@ const GlobalFilterBar = () => {
 
 
   // Filter accounts based on type
-  const { accountTypes } = useStore();
+  const accountTypes = useStore(state => state.accountTypes);
   const filteredAccounts = accounts.filter(acc => {
     if (filterAccountType === 'ALL') return true;
     const typeDef = accountTypes.find(t => t.id === acc.type);
@@ -74,7 +79,7 @@ const GlobalFilterBar = () => {
 
   // Label for account button
   const accountLabel = filterAccountIds.length === 0
-    ? `Tous (${filterAccountType === 'ALL' ? 'comptes' : ACCOUNT_TYPES.find(t => t.key === filterAccountType).label})`
+    ? `Tous (${filterAccountType === 'ALL' ? 'comptes' : (ACCOUNT_TYPES.find(t => t.key === filterAccountType)?.label || filterAccountType)})`
     : filterAccountIds.length === 1
       ? accounts.find(a => a.id === filterAccountIds[0])?.name ?? '1 compte'
       : `${filterAccountIds.length} comptes`;
