@@ -28,6 +28,7 @@ OpenBank/
 │   │   │   ├── charts.js
 │   │   │   ├── dashboard.js
 │   │   │   ├── export.js
+│   │   │   ├── forecasts.js       ← Prévisions & récurrences (6 endpoints)
 │   │   │   ├── import.js
 │   │   │   ├── rules.js
 │   │   │   ├── transactions.js
@@ -35,6 +36,8 @@ OpenBank/
 │   │   └── services/
 │   │       ├── csvParser.js       ← Parser CSV universel multi-banques
 │   │       ├── categorizer.js     ← Moteur de catégorisation auto
+│   │       ├── recurringDetector.js ← Détection abonnements récurrents
+│   │       ├── forecastEngine.js    ← Moteur de prévision fin de mois
 │   │       └── transferDetector.js ← Détection virements internes
 │   ├── .env                  ← Variables d'environnement
 │   └── package.json
@@ -56,13 +59,14 @@ OpenBank/
 │   │   │   ├── TopBar.jsx    ← Barre supérieure (dark mode, profil)
 │   │   │   └── Card.jsx      ← Composant carte réutilisable
 │   │   └── pages/
-│   │       ├── Dashboard.jsx
+│   │       ├── Dashboard.jsx     ← Tableau de bord + widget prévision
 │   │       ├── Import.jsx
 │   │       ├── Transactions.jsx
 │   │       ├── Charts.jsx
 │   │       ├── Budget.jsx
-│   │       ├── Analysis.jsx
-│   │       └── Settings.jsx
+│   │       ├── Analysis.jsx      ← Analyse + section récurrences
+│   │       ├── Forecasts.jsx     ← Prévisions financières (NEW)
+│   │       └── Settings.jsx      ← Paramètres + config prévision
 │   └── package.json
 │
 └── Imports/                  ← Dossier de dépôt des CSV bancaires
@@ -128,13 +132,15 @@ Pas de mot de passe, pas de service à démarrer. Ce fichier contient toutes vos
 ### Schéma des tables
 
 ```
-User           → Utilisateurs (nom, email, rôle ADMIN/READER)
-Account        → Comptes bancaires (Courant, Livret A, PEA, Autre)
-Transaction    → Toutes les opérations importées
-Category       → Catégories de dépenses (Alimentation, Transport...)
-CategoryRule   → Règles de catégorisation automatique (mots-clés)
-Budget         → Plafonds budgétaires par catégorie et par mois
-ImportHistory  → Historique des fichiers importés
+User                  → Utilisateurs (nom, email, rôle ADMIN/READER)
+Account               → Comptes bancaires (Courant, Livret A, PEA, Autre)
+Transaction           → Toutes les opérations importées
+Category              → Catégories de dépenses (Alimentation, Transport...)
+CategoryRule          → Règles de catégorisation automatique (mots-clés)
+Budget                → Plafonds budgétaires par catégorie et par mois
+ImportHistory         → Historique des fichiers importés
+RecurringTransaction  → Abonnements/récurrences détectés ou confirmés
+ForecastSettings      → Paramètres de prévision par utilisateur
 ```
 
 #### Relations
@@ -145,6 +151,8 @@ User ──< Account ──< Transaction >── Category
 Category ──< CategoryRule              │
 Category ──< Budget >── User           │
 Account ──< ImportHistory              │
+User ──< RecurringTransaction >── Category
+User ──< ForecastSettings (1:1)
 ```
 
 ---
@@ -220,6 +228,7 @@ Backend Express (port 3001)
     ├── /api/charts        → Données graphiques
     ├── /api/budgets       → CRUD budgets
     ├── /api/analysis      → Analyse intelligente
+    ├── /api/forecasts     → Prévisions & récurrences
     ├── /api/categories    → Catégories
     ├── /api/rules         → Règles auto-catégorisation
     ├── /api/users         → CRUD utilisateurs
@@ -255,6 +264,58 @@ Fichier CSV (buffer)
     ▼  transferDetector.js
     Détection virements internes (même montant entre comptes)
 ```
+
+---
+
+### Fonctionnalités du 20 Mars 2026
+
+#### Prévisions Financières & Détection d'Abonnements
+
+**Fichiers backend :** `services/recurringDetector.js`, `services/forecastEngine.js`, `routes/forecasts.js`
+**Fichiers frontend :** `pages/Forecasts.jsx`
+**Modèles Prisma :** `RecurringTransaction`, `ForecastSettings`
+
+**Moteur de détection des récurrences** (`recurringDetector.js`) :
+- Regroupe les transactions par description normalisée (réutilise `normalizeDesc` du `categorizer.js`)
+- Détecte les patterns temporels : intervalle régulier (~7j hebdo, ~30j mensuel, ~90j trimestriel, ~365j annuel)
+- Critères : minimum 2 occurrences, montant similaire (±15%), intervalle régulier (±5 jours)
+- Score de confiance (0-100) basé sur la régularité des intervalles et la constance des montants
+
+**Moteur de prévision** (`forecastEngine.js`) :
+- Projette le solde en fin de mois : `soldeActuel + revenusAttendus - dépensesRécurrentes - variablesEstimées`
+- Supporte un override manuel du salaire (sinon utilise la détection automatique)
+- Calcule le potentiel d'épargne = `soldeProjeté - coussinDeSécurité`
+- Génère des alertes : solde négatif, pas de revenu détecté, dépassement du coussin
+
+**Routes API** (`/api/forecasts/*` — JWT requis) :
+
+| Méthode | Route | Description |
+|---|---|---|
+| `GET` | `/recurring` | Liste des récurrences détectées + confirmées |
+| `GET` | `/projection` | Prévision du solde fin de mois |
+| `PATCH` | `/recurring/:id` | Modifier/désactiver une récurrence |
+| `POST` | `/recurring/confirm` | Confirmer une récurrence détectée (la sauvegarder en BDD) |
+| `GET` | `/settings` | Récupérer les paramètres de prévision |
+| `PATCH` | `/settings` | Mettre à jour les paramètres (salaire, coussin, sensibilité) |
+
+Tous les endpoints acceptent les filtres globaux (`startDate`, `endDate`, `accountIds`).
+
+**Page Prévisions** (`/forecasts`) :
+- 4 KPI Cards : Solde Actuel, Solde Projeté, Potentiel d'Épargne, Jours Restants
+- Graphique de projection (AreaChart) : courbe réelle + projection pointillée + ligne de référence coussin
+- Tableau interactif des abonnements avec onglets Dépenses/Revenus, badges de confiance, boutons confirmer/désactiver
+- Breakdown « Ce mois-ci : Encore à venir » (dépenses récurrentes non prélevées)
+- Recommandations d'épargne avec calculs concrets
+
+**Intégrations dans les pages existantes :**
+- **Dashboard** : Widget « Prévision fin de mois » cliquable (solde projeté + épargne possible)
+- **Analyse** : Section « Dépenses Récurrentes » (total mensuel, top 5, lien vers /forecasts)
+- **Paramètres** : Carte « Prévisions & Récurrences » avec inputs configurables :
+  - Salaire net mensuel (override ou auto-détection)
+  - Coussin de sécurité (défaut 200€)
+  - Sensibilité de détection (occurrences min, tolérance montant %, tolérance jours)
+
+---
 
 ### Fonctionnalités Récentes (Mars 2026)
 

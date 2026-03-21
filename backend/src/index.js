@@ -78,6 +78,7 @@ app.use('/api/import', authenticate, require('./routes/import'));
 app.use('/api/dashboard', authenticate, require('./routes/dashboard'));
 app.use('/api/charts', authenticate, require('./routes/charts'));
 app.use('/api/analysis', authenticate, require('./routes/analysis'));
+app.use('/api/forecasts', authenticate, require('./routes/forecasts'));
 app.use('/api/export', authenticate, require('./routes/export'));
 app.use('/api/users', authenticate, require('./routes/users'));
 
@@ -113,11 +114,14 @@ async function bootstrap() {
   }
 }
 
-app.listen(PORT, async () => {
-  await bootstrap();
-  const { startDailyDigest } = require('./jobs/dailyDigest');
-  startDailyDigest();
-  console.log(`🚀 Clarify API running on http://localhost:${PORT}`);
-});
+// Only start listening when run directly (not when required by tests)
+if (require.main === module) {
+  app.listen(PORT, async () => {
+    await bootstrap();
+    const { startDailyDigest } = require('./jobs/dailyDigest');
+    startDailyDigest();
+    console.log(`🚀 Clarify API running on http://localhost:${PORT}`);
+  });
+}
 
 module.exports = app;

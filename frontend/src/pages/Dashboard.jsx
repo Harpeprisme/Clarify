@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import Card from '../components/Card';
 import useStore from '../store';
@@ -13,8 +14,10 @@ const fmt = (n) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency:
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4'];
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
+  const [forecast, setForecast] = useState(null);
 
   // Drill-down State
   const [selectedKpi, setSelectedKpi]         = useState(null);
@@ -33,8 +36,13 @@ const Dashboard = () => {
   const fetchDashboard = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get(`/dashboard?${buildParams()}`);
-      setData(data);
+      const qs = buildParams();
+      const [dashRes, forecastRes] = await Promise.all([
+        api.get(`/dashboard?${qs}`),
+        api.get(`/forecasts/projection?${qs}`).catch(() => ({ data: null })),
+      ]);
+      setData(dashRes.data);
+      setForecast(forecastRes.data);
     } catch (err) {
       console.error('Dashboard error:', err);
     } finally {
@@ -223,6 +231,44 @@ const Dashboard = () => {
               )}
             </div>
           </Card>
+
+          {/* ── Forecast Widget ────────────────────────────────────────── */}
+          {forecast && (
+            <Card
+              className="glass-card"
+              onClick={() => navigate('/forecasts')}
+              style={{ cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s' }}
+              onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-lg)'; }}
+              onMouseOut={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = ''; }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <div className="font-semibold" style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>📊 Prévision fin de mois</div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--accent-primary)' }}>Voir les détails →</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                <div>
+                  <div className="text-muted" style={{ fontSize: '0.75rem' }}>Solde projeté</div>
+                  <div className="font-bold" style={{
+                    fontSize: '1.5rem',
+                    color: forecast.projectedBalance >= 0 ? 'var(--success)' : 'var(--danger)',
+                  }}>
+                    {fmt(forecast.projectedBalance)}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div className="text-muted" style={{ fontSize: '0.75rem' }}>Épargne possible</div>
+                  <div className="font-bold" style={{ fontSize: '1.1rem', color: forecast.savingsPotential > 0 ? 'var(--success)' : 'var(--text-muted)' }}>
+                    {fmt(forecast.savingsPotential)}
+                  </div>
+                </div>
+              </div>
+              {forecast.daysRemaining > 0 && (
+                <div className="text-muted" style={{ fontSize: '0.72rem', marginTop: '0.5rem' }}>
+                  {forecast.daysRemaining} jours restants · {forecast.alerts?.length > 0 ? forecast.alerts[0].message.slice(0, 60) + '…' : ''}
+                </div>
+              )}
+            </Card>
+          )}
         </div>
       </div>
     </div>

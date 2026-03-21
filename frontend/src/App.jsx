@@ -11,6 +11,7 @@ import Charts       from './pages/Charts';
 import Budget       from './pages/Budget';
 import Bourse       from './pages/Bourse';
 import Analysis     from './pages/Analysis';
+import Forecasts    from './pages/Forecasts';
 import Settings     from './pages/Settings';
 import Profile      from './pages/Profile';
 import Login        from './pages/Login';
@@ -117,6 +118,7 @@ const App = () => {
           <Route path="budget"       element={<Budget />} />
           <Route path="bourse"       element={<Bourse />} />
           <Route path="analysis"     element={<Analysis />} />
+          <Route path="forecasts"    element={<Forecasts />} />
           <Route path="settings"     element={<Settings />} />
           <Route path="profile"      element={<Profile />} />
         </Route>

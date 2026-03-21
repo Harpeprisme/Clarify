@@ -321,8 +321,132 @@ const Settings = () => {
               </div>
             </div>
           </Card>
+
+          <ForecastSettingsCard />
         </div>
     </div>
+  );
+};
+
+// ── Forecast Settings Card ──────────────────────────────────────────────────
+const ForecastSettingsCard = () => {
+  const [settings, setSettings] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  useEffect(() => {
+    api.get('/forecasts/settings')
+      .then(({ data }) => setSettings(data))
+      .catch(err => console.error('Forecast settings error:', err));
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const { data } = await api.patch('/forecasts/settings', {
+        monthlySalary: settings.monthlySalary || null,
+        safetyBuffer: settings.safetyBuffer,
+        detectionMinOccurrences: settings.detectionMinOccurrences,
+        detectionAmountTolerance: settings.detectionAmountTolerance,
+        detectionDayTolerance: settings.detectionDayTolerance,
+      });
+      setSettings(data);
+      setMsg('✅ Paramètres sauvegardés');
+      setTimeout(() => setMsg(''), 3000);
+    } catch (err) {
+      console.error(err);
+      setMsg('❌ Erreur lors de la sauvegarde');
+    } finally { setSaving(false); }
+  };
+
+  if (!settings) return null;
+
+  return (
+    <Card title="Prévisions & Récurrences" style={{ gridColumn: '1 / -1' }}>
+      <p className="text-muted mb-6 text-sm">
+        Configurez les paramètres utilisés pour la détection automatique des abonnements et les prévisions financières.
+      </p>
+
+      {msg && (
+        <div className="p-3 mb-4 rounded-xl font-semibold text-sm"
+             style={{ backgroundColor: msg.startsWith('✅') ? 'rgba(39,174,96,0.1)' : 'rgba(255,107,107,0.1)', color: msg.startsWith('✅') ? 'var(--success)' : 'var(--danger)' }}>
+          {msg}
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+        {/* Salary */}
+        <div>
+          <label className="text-[10px] font-bold text-muted mb-2 ml-1 block uppercase tracking-widest">
+            Salaire net mensuel (€)
+          </label>
+          <input
+            type="number" step="0.01" className="input"
+            placeholder="Détection automatique si vide"
+            value={settings.monthlySalary ?? ''}
+            onChange={e => setSettings(s => ({ ...s, monthlySalary: e.target.value ? parseFloat(e.target.value) : null }))}
+          />
+          <p className="text-muted mt-1" style={{ fontSize: '0.72rem' }}>
+            Laissez vide pour que le moteur utilise la détection automatique des revenus récurrents.
+          </p>
+        </div>
+
+        {/* Safety buffer */}
+        <div>
+          <label className="text-[10px] font-bold text-muted mb-2 ml-1 block uppercase tracking-widest">
+            Coussin de sécurité (€)
+          </label>
+          <input
+            type="number" step="1" className="input"
+            value={settings.safetyBuffer}
+            onChange={e => setSettings(s => ({ ...s, safetyBuffer: parseFloat(e.target.value) || 0 }))}
+          />
+          <p className="text-muted mt-1" style={{ fontSize: '0.72rem' }}>
+            Montant minimum à conserver. Utilisé pour le calcul du potentiel d'épargne.
+          </p>
+        </div>
+      </div>
+
+      <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '1.25rem', marginBottom: '1.5rem' }}>
+        <h4 className="font-semibold mb-4 text-muted" style={{ fontSize: '0.85rem' }}>Sensibilité de la détection</h4>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem' }}>
+          <div>
+            <label className="text-[10px] font-bold text-muted mb-2 ml-1 block uppercase tracking-widest">
+              Occurrences minimum
+            </label>
+            <input
+              type="number" min="2" max="12" className="input"
+              value={settings.detectionMinOccurrences}
+              onChange={e => setSettings(s => ({ ...s, detectionMinOccurrences: parseInt(e.target.value) || 2 }))}
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-muted mb-2 ml-1 block uppercase tracking-widest">
+              Tolérance montant (%)
+            </label>
+            <input
+              type="number" min="1" max="50" className="input"
+              value={settings.detectionAmountTolerance}
+              onChange={e => setSettings(s => ({ ...s, detectionAmountTolerance: parseFloat(e.target.value) || 15 }))}
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-muted mb-2 ml-1 block uppercase tracking-widest">
+              Tolérance intervalle (jours)
+            </label>
+            <input
+              type="number" min="1" max="15" className="input"
+              value={settings.detectionDayTolerance}
+              onChange={e => setSettings(s => ({ ...s, detectionDayTolerance: parseInt(e.target.value) || 5 }))}
+            />
+          </div>
+        </div>
+      </div>
+
+      <button onClick={handleSave} className="btn btn-primary px-8" style={{ height: '42px' }} disabled={saving}>
+        {saving ? 'Enregistrement…' : 'Sauvegarder les paramètres'}
+      </button>
+    </Card>
   );
 };
 

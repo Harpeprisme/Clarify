@@ -25,6 +25,8 @@ model User {
   categories   Category[]
   rules        CategoryRule[]
   passwordResetTokens PasswordResetToken[]
+  recurringTransactions RecurringTransaction[]
+  forecastSettings      ForecastSettings?
 }
 
 model AccountType {
@@ -59,6 +61,7 @@ model Category {
   transactions Transaction[]
   rules        CategoryRule[]
   budgets      Budget[]
+  recurringTransactions RecurringTransaction[]
 }
 
 model CategoryRule {
@@ -121,4 +124,34 @@ model PasswordResetToken {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   used      Boolean  @default(false)
+}
+
+model RecurringTransaction {
+  id               Int       @id @default(autoincrement())
+  userId           Int
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  description      String
+  averageAmount    Float
+  frequency        String    // MONTHLY | WEEKLY | QUARTERLY | ANNUAL
+  nextExpectedDate DateTime?
+  lastSeenDate     DateTime
+  occurrences      Int       @default(0)
+  confidence       Float     @default(0)
+  isConfirmed      Boolean   @default(false)
+  isActive         Boolean   @default(true)
+  categoryId       Int?
+  category         Category? @relation(fields: [categoryId], references: [id])
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model ForecastSettings {
+  id                       Int    @id @default(autoincrement())
+  userId                   Int    @unique
+  user                     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monthlySalary            Float?
+  safetyBuffer             Float  @default(200)
+  detectionMinOccurrences  Int    @default(2)
+  detectionAmountTolerance Float  @default(15)
+  detectionDayTolerance    Int    @default(5)
 }

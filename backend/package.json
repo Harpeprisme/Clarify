@@ -11,7 +11,8 @@
     "db:seed": "node src/seed.js",
     "db:reset-prod": "node src/scripts/reset_db.js",
     "db:reset": "npx prisma@6.0.0 migrate reset --force",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test": "jest --forceExit --detectOpenHandles --verbose"
   },
   "dependencies": {
     "@prisma/client": "^6.19.2",
@@ -39,6 +40,8 @@
     "yahoo-finance2": "^3.13.2"
   },
   "devDependencies": {
-    "nodemon": "^3.1.0"
+    "jest": "^30.3.0",
+    "nodemon": "^3.1.0",
+    "supertest": "^7.2.2"
   }
 }
