@@ -7,6 +7,11 @@ const passport = require('../config/passport');
 const { authenticate } = require('../middleware/auth');
 const { authLimiter, createAccountLimiter, resetLimiter } = require('../middleware/security');
 
+// Helper to reliably get the frontend URL, defaulting to the production URL if in prod
+const getFrontendUrl = () => {
+  return process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://deployclarify.vercel.app' : 'http://localhost:5173');
+};
+
 // In-memory failed login tracker (IP + email)
 const failedAttempts = new Map();
 const MAX_FAILED = 5;
@@ -166,14 +171,15 @@ router.get('/google', (req, res, next) => {
 
 router.get('/google/callback', (req, res, next) => {
   console.log('Received Google OAuth callback');
-  passport.authenticate('google', { session: false, failureRedirect: `${process.env.FRONTEND_URL}/login?error=google_failed` }, (err, user, info) => {
+  const frontendUrl = getFrontendUrl();
+  passport.authenticate('google', { session: false, failureRedirect: `${frontendUrl}/login?error=google_failed` }, (err, user, info) => {
     if (err) {
       console.error('Google OAuth Authentication Error:', err);
-      return res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_error`);
+      return res.redirect(`${frontendUrl}/login?error=google_auth_error`);
     }
     if (!user) {
       console.warn('Google OAuth failed: No user found/created', info);
-      return res.redirect(`${process.env.FRONTEND_URL}/login?error=google_failed`);
+      return res.redirect(`${frontendUrl}/login?error=google_failed`);
     }
 
     console.log('Google OAuth Success for user:', user.email);
@@ -183,7 +189,7 @@ router.get('/google/callback', (req, res, next) => {
       role: user.role, avatarUrl: user.avatarUrl, googleId: user.googleId
     });
     
-    const redirectUrl = `${process.env.FRONTEND_URL}/auth/callback?token=${token}&user=${encodeURIComponent(safeUser)}`;
+    const redirectUrl = `${frontendUrl}/auth/callback?token=${token}&user=${encodeURIComponent(safeUser)}`;
     console.log('Redirecting to frontend:', redirectUrl.substring(0, 100) + '...');
     res.redirect(redirectUrl);
   })(req, res, next);

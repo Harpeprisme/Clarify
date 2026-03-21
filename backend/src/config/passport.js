@@ -3,6 +3,10 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const prisma = require('./prisma');
 const jwt = require('jsonwebtoken');
 
+const getBackendUrl = () => {
+  return process.env.BACKEND_URL || (process.env.NODE_ENV === 'production' ? 'https://deployclarify-production.up.railway.app' : `http://localhost:${process.env.PORT || 3001}`);
+};
+
 if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
   console.error('❌ ERREUR: GOOGLE_CLIENT_ID ou GOOGLE_CLIENT_SECRET manquant dans les variables d\'environnement.');
 }
@@ -10,7 +14,7 @@ if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID || 'missing',
   clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'missing',
-  callbackURL: `${process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 3001}`}/api/auth/google/callback`,
+  callbackURL: `${getBackendUrl()}/api/auth/google/callback`,
   scope: ['profile', 'email']
 }, async (accessToken, refreshToken, profile, done) => {
   try {
