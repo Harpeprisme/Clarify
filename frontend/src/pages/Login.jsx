@@ -38,7 +38,12 @@ const Login = () => {
   };
 
   const handleGoogle = () => {
-    window.location.href = 'http://localhost:3001/api/auth/google';
+    // Determine base URL (e.g., https://api.domain.com without the /api suffix if /api is handled inside the callback)
+    // Actually, backend routes are /api/auth/google, so we keep the exact route
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+    // Remove trailing /api if present, because the endpoint is literally replacing /api with /api/auth/google
+    const baseUrl = apiUrl.replace(/\/api$/, '');
+    window.location.href = `${baseUrl}/api/auth/google`;
   };
 
   return (
