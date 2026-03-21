@@ -78,7 +78,6 @@ router.post('/', upload.single('file'), async (req, res, next) => {
 
       if (!existing) {
         const category = await categorizeTransaction(row.description, row.amount, req.user.id);
-        console.log(`[Import] Categorizing "${row.description}" [${row.amount}] -> ${category ? category.name : 'NONE'}`);
 
         await prisma.transaction.create({
           data: {
@@ -88,25 +87,17 @@ router.post('/', upload.single('file'), async (req, res, next) => {
             type: row.type,
             accountId,
             categoryId: category ? category.id : null,
-            isin: row.isin || null,
-            unitPrice: row.unitPrice || null,
-            quantity: row.quantity || null,
           }
         });
         importedCount++;
       } else {
-        // Retroactively update Bourse fields if we found them now, but they were missing in DB
         let bUpdate = {};
-        if (row.isin && !existing.isin) bUpdate.isin = row.isin;
-        if (row.unitPrice !== null && existing.unitPrice === null) bUpdate.unitPrice = row.unitPrice;
-        if (row.quantity !== null && existing.quantity === null) bUpdate.quantity = row.quantity;
-
+        if (row.categoryId && !existing.categoryId) bUpdate.categoryId = row.categoryId;
         if (Object.keys(bUpdate).length > 0) {
           await prisma.transaction.update({
             where: { id: existing.id },
             data: bUpdate
           });
-          console.log(`[Import] Updated existing transaction ${existing.id} with Bourse metadata: ${row.isin}`);
         }
         
         skippedCount++;

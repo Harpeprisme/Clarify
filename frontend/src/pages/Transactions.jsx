@@ -148,6 +148,123 @@ const Transactions = () => {
     finally { setAddSaving(false); }
   };
 
+  const tableContent = React.useMemo(() => {
+    if (loading && transactions.length === 0) {
+      return <tr><td colSpan="6" className="text-center p-4 text-muted">Chargement...</td></tr>;
+    }
+    if (transactions.length === 0) {
+      return <tr><td colSpan="6" className="text-center p-4 text-muted">Aucune transaction.</td></tr>;
+    }
+    
+    return transactions.map(tx => {
+      const isEditing  = editingId === tx.id;
+      const isDeleting = deletingId === tx.id;
+
+      return (
+        <tr key={tx.id} style={{ transition: 'all 0.15s', opacity: tx.isPointed ? 0.6 : 1, backgroundColor: tx.isPointed ? 'rgba(0,0,0,0.02)' : '' }}
+          className={isEditing ? 'is-editing' : isDeleting ? 'is-deleting' : 'hover-bg'}>
+
+          {/* POINTAGE */}
+          <td style={{ textAlign: 'center' }}>
+            <button 
+              onClick={() => togglePointed(tx)}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontSize: '1.2rem', padding: '0 4px',
+                color: tx.isPointed ? 'var(--success)' : 'var(--border-light)',
+                transition: 'color 0.2s'
+              }}
+              title={tx.isPointed ? 'Dépointer' : 'Pointer'}
+            >
+              {tx.isPointed ? '✓' : '○'}
+            </button>
+          </td>
+
+          {/* DATE */}
+          <td>
+            {isEditing
+              ? <input type="date" className="tx-input" style={{ width: '130px' }} value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))} />
+              : <span className="whitespace-nowrap" style={{ fontSize: '0.9rem' }}>{format(new Date(tx.date), 'dd/MM/yyyy')}</span>
+            }
+          </td>
+
+          {/* DESCRIPTION */}
+          <td>
+            {isEditing
+              ? <input type="text" className="tx-input" value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} />
+              : (
+                <div>
+                  <div className="font-semibold" style={{ fontSize: '0.9rem' }}>{tx.description}</div>
+                  {tx.notes && <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>📝 {tx.notes}</div>}
+                  {tx.type === 'TRANSFER' && <span className="badge badge-info" style={{ fontSize: '0.68rem', marginTop: '2px' }}>Virement interne</span>}
+                </div>
+              )
+            }
+          </td>
+
+          {/* ACCOUNT */}
+          <td className="text-muted" style={{ fontSize: '0.85rem' }}>
+            {isEditing
+              ? <select className="tx-input" style={{ width: '140px' }} value={editForm.accountId} onChange={e => setEditForm(f => ({ ...f, accountId: e.target.value }))}>
+                  {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              : tx.account?.name
+            }
+          </td>
+
+          {/* CATEGORY */}
+          <td>
+            {isEditing
+              ? <select className="tx-input" style={{ width: '150px' }} value={editForm.categoryId} onChange={e => setEditForm(f => ({ ...f, categoryId: e.target.value }))}>
+                  <option value="">Non catégorisé</option>
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              : <span className="tx-category-badge" style={{
+                  backgroundColor: tx.category?.color ? `${tx.category.color}18` : 'var(--bg-app)',
+                  color: tx.category?.color || 'var(--text-muted)',
+                }}>
+                  {tx.category?.name || '—'}
+                </span>
+            }
+          </td>
+
+          {/* AMOUNT */}
+          <td style={{ textAlign: 'right', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+            {isEditing
+              ? <input type="number" step="0.01" className="tx-input" style={{ width: '110px', textAlign: 'right' }}
+                  value={editForm.amount} onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))} />
+              : <span className={tx.amount > 0 ? 'text-success' : ''} style={{ fontSize: '0.95rem' }}>
+                  {tx.amount > 0 ? '+' : ''}{formatCurrency(tx.amount)}
+                </span>
+            }
+          </td>
+
+          {/* ACTIONS */}
+          <td style={{ textAlign: 'center' }}>
+            {isEditing ? (
+              <div className="flex gap-1" style={{ justifyContent: 'center' }}>
+                <button className="tx-action-confirm-btn" title="Enregistrer" onClick={() => saveEdit(tx.id)}
+                  style={{ background: 'var(--success)', color: '#fff' }}>✓</button>
+                <button className="tx-action-btn" title="Annuler" onClick={cancelEdit}>✕</button>
+              </div>
+            ) : isDeleting ? (
+              <div className="flex gap-1" style={{ justifyContent: 'center' }}>
+                <button className="tx-action-confirm-btn" title="Confirmer" onClick={() => confirmDelete(tx.id)}
+                  style={{ background: 'var(--danger)', color: '#fff' }}>Confirmer</button>
+                <button className="tx-action-btn" title="Annuler" onClick={() => setDeletingId(null)}>✕</button>
+              </div>
+            ) : (
+              <div className="tx-action-btns">
+                <button className="tx-action-btn" title="Modifier" onClick={() => startEdit(tx)}>✏️</button>
+                <button className="tx-action-btn" title="Supprimer" onClick={() => setDeletingId(tx.id)}>🗑️</button>
+              </div>
+            )}
+          </td>
+        </tr>
+      );
+    });
+  }, [transactions, editingId, deletingId, editForm, accounts, categories, loading]);
+
   return (
     <div>
       {/* ── Header ───────────────────────────────────────────────── */}
@@ -238,117 +355,7 @@ const Transactions = () => {
               </tr>
             </thead>
             <tbody>
-              {loading && transactions.length === 0 ? (
-                <tr><td colSpan="6" className="text-center p-4 text-muted">Chargement...</td></tr>
-              ) : transactions.length === 0 ? (
-                <tr><td colSpan="6" className="text-center p-4 text-muted">Aucune transaction.</td></tr>
-              ) : transactions.map(tx => {
-                const isEditing  = editingId === tx.id;
-                const isDeleting = deletingId === tx.id;
-
-                return (
-                  <tr key={tx.id} style={{ transition: 'all 0.15s', opacity: tx.isPointed ? 0.6 : 1, backgroundColor: tx.isPointed ? 'rgba(0,0,0,0.02)' : '' }}
-                    className={isEditing ? 'is-editing' : isDeleting ? 'is-deleting' : 'hover-bg'}>
-
-                    {/* POINTAGE */}
-                    <td style={{ textAlign: 'center' }}>
-                      <button 
-                        onClick={() => togglePointed(tx)}
-                        style={{
-                          background: 'none', border: 'none', cursor: 'pointer',
-                          fontSize: '1.2rem', padding: '0 4px',
-                          color: tx.isPointed ? 'var(--success)' : 'var(--border-light)',
-                          transition: 'color 0.2s'
-                        }}
-                        title={tx.isPointed ? 'Dépointer' : 'Pointer'}
-                      >
-                        {tx.isPointed ? '✓' : '○'}
-                      </button>
-                    </td>
-
-                    {/* DATE */}
-                    <td>
-                      {isEditing
-                        ? <input type="date" className="tx-input" style={{ width: '130px' }} value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))} />
-                        : <span className="whitespace-nowrap" style={{ fontSize: '0.9rem' }}>{format(new Date(tx.date), 'dd/MM/yyyy')}</span>
-                      }
-                    </td>
-
-                    {/* DESCRIPTION */}
-                    <td>
-                      {isEditing
-                        ? <input type="text" className="tx-input" value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} />
-                        : (
-                          <div>
-                            <div className="font-semibold" style={{ fontSize: '0.9rem' }}>{tx.description}</div>
-                            {tx.notes && <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>📝 {tx.notes}</div>}
-                            {tx.type === 'TRANSFER' && <span className="badge badge-info" style={{ fontSize: '0.68rem', marginTop: '2px' }}>Virement interne</span>}
-                          </div>
-                        )
-                      }
-                    </td>
-
-                    {/* ACCOUNT */}
-                    <td className="text-muted" style={{ fontSize: '0.85rem' }}>
-                      {isEditing
-                        ? <select className="tx-input" style={{ width: '140px' }} value={editForm.accountId} onChange={e => setEditForm(f => ({ ...f, accountId: e.target.value }))}>
-                            {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                          </select>
-                        : tx.account?.name
-                      }
-                    </td>
-
-                    {/* CATEGORY */}
-                    <td>
-                      {isEditing
-                        ? <select className="tx-input" style={{ width: '150px' }} value={editForm.categoryId} onChange={e => setEditForm(f => ({ ...f, categoryId: e.target.value }))}>
-                            <option value="">Non catégorisé</option>
-                            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                          </select>
-                        : <span className="tx-category-badge" style={{
-                            backgroundColor: tx.category?.color ? `${tx.category.color}18` : 'var(--bg-app)',
-                            color: tx.category?.color || 'var(--text-muted)',
-                          }}>
-                            {tx.category?.name || '—'}
-                          </span>
-                      }
-                    </td>
-
-                    {/* AMOUNT */}
-                    <td style={{ textAlign: 'right', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                      {isEditing
-                        ? <input type="number" step="0.01" className="tx-input" style={{ width: '110px', textAlign: 'right' }}
-                            value={editForm.amount} onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))} />
-                        : <span className={tx.amount > 0 ? 'text-success' : ''} style={{ fontSize: '0.95rem' }}>
-                            {tx.amount > 0 ? '+' : ''}{formatCurrency(tx.amount)}
-                          </span>
-                      }
-                    </td>
-
-                    {/* ACTIONS */}
-                    <td style={{ textAlign: 'center' }}>
-                      {isEditing ? (
-                        <div className="flex gap-1" style={{ justifyContent: 'center' }}>
-                          <button className="tx-action-confirm-btn" title="Enregistrer" onClick={() => saveEdit(tx.id)}
-                            style={{ background: 'var(--success)', color: '#fff' }}>✓</button>
-                          <button className="tx-action-btn" title="Annuler" onClick={cancelEdit}>✕</button>
-                        </div>
-                      ) : isDeleting ? (
-                        <div className="flex gap-1" style={{ justifyContent: 'center' }}>
-                          <button className="tx-action-confirm-btn" title="Confirmer" onClick={() => confirmDelete(tx.id)}
-                            style={{ background: 'var(--danger)', color: '#fff' }}>Confirmer</button>
-                          <button className="tx-action-btn" title="Annuler" onClick={() => setDeletingId(null)}>✕</button>
-                        </div>
-                      ) : (
-                        <div className="tx-action-btns">
-                          <button className="tx-action-btn" title="Modifier" onClick={() => startEdit(tx)}>✏️</button>
-                          <button className="tx-action-btn" title="Supprimer" onClick={() => setDeletingId(tx.id)}>🗑️</button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
+              {tableContent}
             </tbody>
           </table>
         </div>

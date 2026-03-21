@@ -456,11 +456,9 @@ const parseCSV = (csvContent) => {
                       const result = await yf.search(query);
                       if (result.quotes?.length > 0) {
                         row.isin = result.quotes[0].symbol;
-                        console.log(`[csvParser] 🔍 Resolved "${query}" → ${row.isin}`);
                       }
                     }
                   } catch (e) {
-                    console.warn(`[csvParser] ISIN lookup failed for "${row.description}":`, e.message);
                   }
                 }
                 delete row.needsIsinLookup;

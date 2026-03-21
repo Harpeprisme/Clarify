@@ -498,3 +498,26 @@ Pour mettre à jour une instance déjà déployée :
 3. Les migrations Prisma s'appliquent automatiquement si vous utilisez les Dockerfiles fournis.
 
 ---
+
+## Architecture de Test & Performance (Mars 2026)
+
+### Suite de Tests Automatisés
+L'application intègre une suite complète de tests unitaires et d'intégration via **Jest** et **Supertest** (plus de 134 tests).
+Les tests couvrent :
+- **Intégration APIs** (Auth, Comptes, Transactions, Analyse, Prévisions).
+- **Logique Métier** (Moteurs de prévision, détecteurs de récurrences, parsing CSV).
+- **Isolation Base de Données** : Chaque suite fonctionne sur une DB SQLite isolée et vide, reconstruite automatiquement (`tests/setup.js`).
+
+**Lancer tous les tests :**
+```powershell
+cd backend
+npm test
+```
+*Le backend doit être coupé car les tests simulent un serveur sur le port 3001.*
+
+### Optimisations de Performance
+L'application cible une excellente fluidité d'utilisation, favorisée par plusieurs techniques :
+- **Bases de Données (SQLite)** : Des index B-Tree (ex: `@@index([accountId, date])`) sont configurés sur la table des `Transactions` pour accélérer les requêtes d'agrégation et d'analyse.
+- **Frontend (React)** : Utilisation rigoureuse de `React.useMemo` pour la mémorisation des rendus lourds (comme les listes de transactions), empêchant les re-rendus coûteux lors de la simple saisie au clavier (`search`).
+- **Dependencies** : Entièrement à jour sur Vite 5.4+ et Prisma ORM 6+, garantissant la performance et minimisant les failles de sécurité.
+

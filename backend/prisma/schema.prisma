@@ -90,11 +90,10 @@ model Transaction {
   isPointed   Boolean  @default(false) // Rapprochement bancaire
   importedAt  DateTime @default(now())
   notes       String?
-  // Bourse / Investments
-  isin        String?
-  unitPrice   Float?
-  quantity    Float?
-  currency    String?  @default("EUR")
+
+  @@index([accountId, date])
+  @@index([type])
+  @@index([categoryId])
 }
 
 model Budget {
