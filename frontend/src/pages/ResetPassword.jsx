@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { Lock, CheckCircle, XCircle, Check, X } from 'lucide-react';
 import api from '../api';
 
 const ResetPassword = () => {
@@ -48,7 +49,9 @@ const ResetPassword = () => {
         <div className="glass-card" style={{ padding: '2.5rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-light)' }}>
           {success ? (
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✅</div>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+                <CheckCircle size={52} style={{ color: 'var(--success)' }} strokeWidth={1.5} />
+              </div>
               <h2 style={{ color: 'var(--text-main)', marginBottom: '1rem' }}>Mot de passe mis à jour !</h2>
               <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
                 Redirection vers la connexion dans quelques secondes…
@@ -75,7 +78,9 @@ const ResetPassword = () => {
                   { label: 'Un caractère spécial (!@#$…)', ok: /[\W_]/.test(password) },
                 ].map((r, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8rem', color: password ? (r.ok ? '#2DE1C2' : '#ff6b6b') : 'var(--text-muted)', marginTop: 4, transition: 'color 0.2s' }}>
-                    <span style={{ fontSize: 12 }}>{password ? (r.ok ? '✅' : '❌') : '○'}</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                      {!password ? <span style={{ width: 12, height: 12, borderRadius: '50%', border: '1.5px solid currentColor', display: 'inline-block' }} /> : r.ok ? <Check size={12} strokeWidth={3} /> : <X size={12} strokeWidth={3} />}
+                    </span>
                     {r.label}
                   </div>
                 ))}
@@ -122,14 +127,14 @@ const ResetPassword = () => {
                     style={{ width: '100%' }}
                   />
                   {confirm && confirm !== password && (
-                    <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: '#ff6b6b' }}>❌ Les mots de passe ne correspondent pas</p>
+                    <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: '#ff6b6b', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><X size={12} strokeWidth={2.5}/> Les mots de passe ne correspondent pas</p>
                   )}
                   {confirm && confirm === password && password.length > 0 && (
-                    <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: '#2DE1C2' }}>✅ Les mots de passe correspondent</p>
+                    <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: '#2DE1C2', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Check size={12} strokeWidth={2.5}/> Les mots de passe correspondent</p>
                   )}
                 </div>
                 <button type="submit" className="btn btn-primary" disabled={loading || !token} style={{ width: '100%', height: '46px' }}>
-                  {loading ? 'Enregistrement…' : '🔐 Créer mon mot de passe'}
+                  {loading ? 'Enregistrement…' : <><Lock size={15} style={{ marginRight: 6 }} />Créer mon mot de passe</>}
                 </button>
               </form>
             </>

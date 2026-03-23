@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Mail, KeyRound, CheckCircle } from 'lucide-react';
 import api from '../api';
 
 const ForgotPassword = () => {
@@ -48,7 +49,9 @@ const ForgotPassword = () => {
         <div className="glass-card" style={{ padding: '2rem' }}>
           {sent ? (
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>📧</div>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+                <CheckCircle size={52} style={{ color: 'var(--success)' }} strokeWidth={1.5} />
+              </div>
               <h2 style={{ color: 'var(--text-main)', fontSize: '1.2rem', fontWeight: 700, marginBottom: 12 }}>Email envoyé !</h2>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: 1.6, marginBottom: 20 }}>
                 Si <strong style={{ color: 'var(--accent-primary)' }}>{email}</strong> correspond à un compte, vous recevrez un lien de réinitialisation dans quelques instants.
@@ -70,7 +73,7 @@ const ForgotPassword = () => {
 
               {/* Info banner */}
               <div style={{ background: 'rgba(45,225,194,0.06)', border: '1px solid rgba(45,225,194,0.15)', borderRadius: 10, padding: '12px 16px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <span style={{ fontSize: 16 }}>🔑</span>
+                <KeyRound size={16} style={{ flexShrink: 0, color: 'var(--accent-primary)', marginTop: 1 }} />
                 <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
                   Entrez votre adresse email et nous vous enverrons un lien pour <strong style={{ color: 'var(--accent-primary)' }}>réinitialiser votre mot de passe</strong>.
                 </p>
@@ -83,7 +86,7 @@ const ForgotPassword = () => {
               </div>
               
               <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', padding: '0.8rem', marginTop: '0.5rem' }}>
-                {loading ? 'Envoi en cours…' : '✉️ Envoyer le lien'}
+                {loading ? 'Envoi en cours…' : <><Mail size={15} style={{ marginRight: 6 }} />Envoyer le lien</>}
               </button>
             </form>
           )}
