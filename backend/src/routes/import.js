@@ -5,6 +5,7 @@ const prisma = require('../config/prisma');
 const { parseAnyFile, detectFormat } = require('../services/formatRouter');
 const { categorizeTransaction } = require('../services/categorizer');
 const { detectInternalTransfers } = require('../services/transferDetector');
+const { cleanDescription } = require('../services/descriptionCleaner');
 
 // Configure multer for memory storage (limit: 30MB — PDFs can be large)
 const upload = multer({ 
@@ -80,12 +81,15 @@ router.post('/', upload.single('file'), async (req, res, next) => {
       });
 
       if (!existing) {
-        const category = await categorizeTransaction(row.description, row.amount, req.user.id);
+        const rawDesc = row.description;
+        const cleanDesc = cleanDescription(rawDesc) || rawDesc;
+        const category = await categorizeTransaction(rawDesc, row.amount, req.user.id);
 
         await prisma.transaction.create({
           data: {
             date: new Date(row.date),
-            description: row.description,
+            description:    cleanDesc,
+            rawDescription: rawDesc,
             amount: row.amount,
             type: row.type,
             accountId,

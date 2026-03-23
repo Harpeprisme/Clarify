@@ -76,20 +76,21 @@ model CategoryRule {
 }
 
 model Transaction {
-  id          Int      @id @default(autoincrement())
-  date        DateTime
-  description String
-  amount      Float
-  type        String   // INCOME | EXPENSE | TRANSFER
-  balance     Float?
-  accountId   Int
-  account     Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  categoryId  Int?
-  category    Category? @relation(fields: [categoryId], references: [id])
-  isInternal  Boolean  @default(false)
-  isPointed   Boolean  @default(false) // Rapprochement bancaire
-  importedAt  DateTime @default(now())
-  notes       String?
+  id             Int      @id @default(autoincrement())
+  date           DateTime
+  description    String            // Cleaned, human-readable name
+  rawDescription String?           // Original bank description (nullable for legacy)
+  amount         Float
+  type           String   // INCOME | EXPENSE | TRANSFER
+  balance        Float?
+  accountId      Int
+  account        Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  categoryId     Int?
+  category       Category? @relation(fields: [categoryId], references: [id])
+  isInternal     Boolean  @default(false)
+  isPointed      Boolean  @default(false) // Rapprochement bancaire
+  importedAt     DateTime @default(now())
+  notes          String?
 
   @@index([accountId, date])
   @@index([type])

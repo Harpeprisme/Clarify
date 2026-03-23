@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Mail, Lock, Shield, Clock, Ban, Sparkles, CheckCircle, AlertTriangle, Link, X, LogOut, Trash2 } from 'lucide-react';
 import api from '../api';
 import Card from '../components/Card';
 import UsersManagement from '../components/UsersManagement';
@@ -15,9 +16,11 @@ const Profile = () => {
   // Profile editing
   const [name,    setName]    = useState(user?.name || '');
   const [nameMsg, setNameMsg] = useState('');
+  const [nameMsgOk, setNameMsgOk] = useState(true);
 
   // Password reset
   const [pwdMsg,  setPwdMsg]  = useState('');
+  const [pwdMsgOk, setPwdMsgOk] = useState(true);
 
   // Email Verification
   const [resendMsg, setResendMsg] = useState('');
@@ -38,9 +41,11 @@ const Profile = () => {
     try {
       const { data } = await api.patch('/auth/profile', { name });
       setUser(data, localStorage.getItem('openbank_token'));
-      setNameMsg('✅ Nom mis à jour');
+      setNameMsgOk(true);
+      setNameMsg('Nom mis à jour');
     } catch (err) {
-      setNameMsg('❌ ' + (err.response?.data?.error || 'Erreur'));
+      setNameMsgOk(false);
+      setNameMsg(err.response?.data?.error || 'Erreur');
     }
   };
 
@@ -130,18 +135,18 @@ const Profile = () => {
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                   <span className={`badge ${user.role === 'ADMIN' ? 'badge-info' : 'badge-success'}`}>{user.role}</span>
                   {user.isEmailVerified ? (
-                    <span className="badge badge-success">Email Vérifié ✓</span>
+                    <span className="badge badge-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><CheckCircle size={12} /> Email Vérifié</span>
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span className="badge" style={{ background: 'var(--danger-bg)', color: 'var(--danger)' }}>Email Non Vérifié ⚠️</span>
+                      <span className="badge" style={{ background: 'var(--danger-bg)', color: 'var(--danger)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><AlertTriangle size={12} /> Email Non Vérifié</span>
                       <button onClick={handleResendVerif} className="btn py-1 px-3 text-xs" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-light)' }}>
                         {resendMsg || 'Renvoyer l\'email'}
                       </button>
                     </div>
                   )}
                   {user.googleId && (
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: '0.2rem 0.6rem', background: 'var(--bg-app)', borderRadius: '20px', border: '1px solid var(--border-light)' }}>
-                      🔗 Lié à Google
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: '0.2rem 0.6rem', background: 'var(--bg-app)', borderRadius: '20px', border: '1px solid var(--border-light)', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <Link size={11} /> Lié à Google
                     </span>
                   )}
                 </div>
@@ -152,7 +157,8 @@ const Profile = () => {
           {/* Edit Name */}
           <Card title="Informations personnelles" style={{ marginBottom: '1.5rem' }}>
             {nameMsg && (
-              <div style={{ marginBottom: '1rem', padding: '0.65rem 1rem', borderRadius: 'var(--radius-sm)', background: nameMsg.startsWith('✅') ? 'var(--success-bg)' : 'var(--danger-bg)', color: nameMsg.startsWith('✅') ? 'var(--success)' : 'var(--danger)', fontSize: '0.88rem' }}>
+              <div style={{ marginBottom: '1rem', padding: '0.65rem 1rem', borderRadius: 'var(--radius-sm)', background: nameMsgOk ? 'var(--success-bg)' : 'var(--danger-bg)', color: nameMsgOk ? 'var(--success)' : 'var(--danger)', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                {nameMsgOk ? <CheckCircle size={15}/> : <AlertTriangle size={15}/>}
                 {nameMsg}
               </div>
             )}
@@ -166,25 +172,31 @@ const Profile = () => {
           </Card>
 
           {/* Security */}
-          <Card title="🔒 Sécurité" style={{ marginBottom: '1.5rem' }}>
+          <Card title="Sécurité" style={{ marginBottom: '1.5rem' }}>
             {/* Security features explanation */}
             <div style={{ display: 'grid', gap: '0.75rem', marginBottom: '1.5rem' }}>
-              {[
-                { icon: '🔐', label: 'Mots de passe chiffrés', desc: 'Hashés avec bcrypt (12 rounds), jamais stockés en clair.' },
-                { icon: '⏱️', label: 'Session sécurisée', desc: 'Déconnexion automatique après 10 min d\'inactivité. Token JWT signé.' },
-                { icon: '🛡️', label: 'Anti-DDoS & Rate Limiting', desc: '100 requêtes/min max. Les tentatives de connexion sont limitées à 5/15 min.' },
-                { icon: '🚫', label: 'Anti-Brute-Force', desc: 'Compte verrouillé 15 min après 5 tentatives échouées.' },
-                { icon: '🧹', label: 'Anti-Injection', desc: 'Toutes les entrées sont nettoyées contre les attaques XSS et NoSQL.' },
-                { icon: user?.isEmailVerified ? '✅' : '⚠️', label: user?.isEmailVerified ? 'Email vérifié' : 'Email non vérifié', desc: user?.isEmailVerified ? `Votre adresse ${user.email} est vérifiée.` : 'Vérifiez votre email pour renforcer la sécurité de votre compte.' },
-              ].map((item, i) => (
+              {([ 
+                { Icon: Lock,        label: 'Mots de passe chiffrés',   desc: 'Hashés avec bcrypt (12 rounds), jamais stockés en clair.' },
+                { Icon: Clock,       label: 'Session sécurisée',         desc: "Déconnexion automatique après 10 min d'inactivité. Token JWT signé." },
+                { Icon: Shield,      label: 'Anti-DDoS & Rate Limiting', desc: '100 requêtes/min max. Connexion limitée à 5/15 min.' },
+                { Icon: Ban,         label: 'Anti-Brute-Force',           desc: 'Compte verrouillé 15 min après 5 tentatives échouées.' },
+                { Icon: Sparkles,    label: 'Anti-Injection',             desc: 'Entrées nettoyées contre XSS et NoSQL.' },
+                {
+                  Icon: user?.isEmailVerified ? CheckCircle : AlertTriangle,
+                  color: user?.isEmailVerified ? 'var(--success)' : 'var(--danger)',
+                  label: user?.isEmailVerified ? 'Email vérifié' : 'Email non vérifié',
+                  desc: user?.isEmailVerified ? `Votre adresse ${user.email} est vérifiée.` : 'Vérifiez votre email pour renforcer la sécurité.',
+                },
+              ]).map((item, i) => (
                 <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 14px', background: 'rgba(45,225,194,0.04)', borderRadius: 10, border: '1px solid rgba(45,225,194,0.08)' }}>
-                  <span style={{ fontSize: 20, flexShrink: 0, marginTop: 2 }}>{item.icon}</span>
+                  <item.Icon size={18} style={{ flexShrink: 0, marginTop: 3, color: item.color || 'var(--accent-primary)' }} />
                   <div>
                     <p style={{ margin: 0, fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-main)' }}>{item.label}</p>
                     <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>{item.desc}</p>
                   </div>
                 </div>
               ))}
+
             </div>
 
             {/* Reset password button */}
@@ -204,13 +216,15 @@ const Profile = () => {
                   setPwdMsg('');
                   try {
                     await api.post('/auth/forgot-password', { email: user.email });
-                    setPwdMsg('✅ Un email de réinitialisation a été envoyé. Vérifiez votre boîte mail.');
+                    setPwdMsgOk(true);
+                    setPwdMsg('Un email de réinitialisation a été envoyé. Vérifiez votre boîte mail.');
                   } catch (err) {
-                    setPwdMsg('❌ ' + (err.response?.data?.error || 'Erreur'));
+                    setPwdMsgOk(false);
+                    setPwdMsg(err.response?.data?.error || 'Erreur');
                   }
                 }}
               >
-                ✉️ Réinitialiser mon mot de passe par email
+                <Mail size={15} /> Réinitialiser mon mot de passe par email
               </button>
             </div>
           </Card>
@@ -224,14 +238,14 @@ const Profile = () => {
               </button>
               <div style={{ flex: 1 }}/>
               {!deleteConfirm ? (
-                <button onClick={() => setDeleteConfirm(true)} style={{ background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)', padding: '0.5rem 1rem', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600' }}>
-                  ⚠️ Supprimer mon compte
+                <button onClick={() => setDeleteConfirm(true)} style={{ background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)', padding: '0.5rem 1rem', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <AlertTriangle size={14} /> Supprimer mon compte
                 </button>
               ) : (
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.85rem', color: 'var(--danger)' }}>Supprimer définitivement ?</span>
                   <button onClick={handleDeleteAccount} style={{ background: 'var(--danger)', color: '#fff', border: 'none', padding: '0.4rem 0.8rem', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '0.82rem', fontWeight: '600' }}>Confirmer</button>
-                  <button onClick={() => setDeleteConfirm(false)} style={{ background: 'transparent', border: '1px solid var(--border-light)', padding: '0.4rem 0.6rem', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '0.82rem' }}>✕</button>
+                  <button onClick={() => setDeleteConfirm(false)} className="icon-btn"><X size={15}/></button>
                 </div>
               )}
             </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Pencil, Trash2, X, AlertTriangle, Check } from 'lucide-react';
 import api from '../api';
 import Card from '../components/Card';
 import useStore from '../store';
@@ -22,6 +23,7 @@ const Settings = () => {
   const [confirmClearId, setConfirmClearId]   = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [actionMsg, setActionMsg]             = useState('');
+  const [actionSuccess, setActionSuccess]     = useState(true);
 
   // currentBalance editing — per account
   const [editBalanceId, setEditBalanceId]     = useState(null);   // which account is being edited
@@ -110,7 +112,8 @@ const Settings = () => {
       navigate('/dashboard');
     } catch (err) {
       console.error(err);
-      setActionMsg('❌ Erreur lors de la suppression.');
+      setActionSuccess(false);
+      setActionMsg('Erreur lors de la suppression.');
     }
   };
 
@@ -122,7 +125,8 @@ const Settings = () => {
       navigate('/dashboard');
     } catch (err) {
       console.error(err);
-      setActionMsg('❌ Erreur lors de la suppression du compte.');
+      setActionSuccess(false);
+      setActionMsg('Erreur lors de la suppression du compte.');
     }
   };
 
@@ -138,12 +142,14 @@ const Settings = () => {
         currentBalance: parseFloat(editBalanceVal)
       });
       setEditBalanceId(null);
-      setActionMsg('✅ Solde mis à jour.');
+      setActionSuccess(true);
+      setActionMsg('Solde mis à jour.');
       fetchAccountsStore();
       setTimeout(() => setActionMsg(''), 3000);
     } catch (err) {
       console.error(err);
-      setActionMsg('❌ Erreur lors de la mise à jour du solde.');
+      setActionSuccess(false);
+      setActionMsg('Erreur lors de la mise à jour du solde.');
     } finally { setBalanceSaving(false); }
   };
 
@@ -158,8 +164,9 @@ const Settings = () => {
           {/* Accounts Management — full width */}
           <Card title="Comptes bancaires" style={{ gridColumn: '1 / -1' }}>
             {actionMsg && (
-              <div className="p-3 mb-4 rounded-xl font-semibold text-sm" 
-                   style={{ backgroundColor: actionMsg.startsWith('✅') ? 'var(--success-bg)' : 'var(--danger-bg)', color: actionMsg.startsWith('✅') ? 'var(--success)' : 'var(--danger)' }}>
+              <div className="p-3 mb-4 rounded-xl font-semibold text-sm flex items-center gap-2"
+                   style={{ backgroundColor: actionSuccess ? 'var(--success-bg)' : 'var(--danger-bg)', color: actionSuccess ? 'var(--success)' : 'var(--danger)' }}>
+                {actionSuccess ? <Check size={16} /> : <AlertTriangle size={16} />}
                 {actionMsg}
               </div>
             )}
@@ -190,7 +197,7 @@ const Settings = () => {
                         <button onClick={() => saveBalance(acc.id)} disabled={balanceSaving} className="btn btn-primary" style={{ flex: 1, height: '36px', fontSize: '0.8rem' }}>
                           {balanceSaving ? '…' : 'Enregistrer'}
                         </button>
-                        <button onClick={() => setEditBalanceId(null)} className="btn btn-outline" style={{ height: '36px' }}>✕</button>
+                        <button onClick={() => setEditBalanceId(null)} className="icon-btn" style={{ height: '36px', width: '36px' }}><X size={16}/></button>
                       </div>
                     </div>
                   ) : (
@@ -199,7 +206,7 @@ const Settings = () => {
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Solde actuel</div>
                         <div className="font-bold">{fmt(acc.balance)}</div>
                       </div>
-                      <button onClick={() => startEditBalance(acc)} className="btn btn-outline" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}>✏️ Ajuster</button>
+                      <button onClick={() => startEditBalance(acc)} className="btn btn-outline" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}><Pencil size={13} /> Ajuster</button>
                     </div>
                   )}
 
@@ -208,11 +215,11 @@ const Settings = () => {
                     {confirmClearId === acc.id ? (
                       <div className="flex gap-2">
                         <button onClick={() => handleClearHistory(acc.id)} className="btn btn-primary" style={{ flex: 2, background: 'var(--danger)', fontSize: '0.7rem' }}>EFFACER</button>
-                        <button onClick={() => setConfirmClearId(null)} className="btn btn-outline" style={{ flex: 1 }}>✕</button>
+                        <button onClick={() => setConfirmClearId(null)} className="icon-btn" style={{ flex: '0 0 36px' }}><X size={16}/></button>
                       </div>
                     ) : (
-                      <button onClick={() => { setConfirmClearId(acc.id); setConfirmDeleteId(null); }} className="btn btn-outline w-full text-xs py-2">
-                        🗑️ Effacer l'historique
+                      <button onClick={() => { setConfirmClearId(acc.id); setConfirmDeleteId(null); }} className="btn btn-outline w-full text-xs py-2" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'center' }}>
+                        <Trash2 size={13} /> Effacer l'historique
                       </button>
                     )}
 
@@ -220,11 +227,11 @@ const Settings = () => {
                     {confirmDeleteId === acc.id ? (
                       <div className="flex gap-2">
                         <button onClick={() => handleDeleteAccount(acc.id)} className="btn btn-primary" style={{ flex: 2, background: 'var(--danger)', fontSize: '0.7rem' }}>SUPPRIMER</button>
-                        <button onClick={() => setConfirmDeleteId(null)} className="btn btn-outline" style={{ flex: 1 }}>✕</button>
+                        <button onClick={() => setConfirmDeleteId(null)} className="icon-btn" style={{ flex: '0 0 36px' }}><X size={16}/></button>
                       </div>
                     ) : (
-                      <button onClick={() => { setConfirmDeleteId(acc.id); setConfirmClearId(null); }} className="btn btn-outline w-full text-xs py-2 text-danger" style={{ borderColor: 'var(--danger-bg)' }}>
-                        ⚠️ Supprimer le compte
+                      <button onClick={() => { setConfirmDeleteId(acc.id); setConfirmClearId(null); }} className="btn btn-outline w-full text-xs py-2 text-danger" style={{ borderColor: 'var(--danger-bg)', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'center' }}>
+                        <AlertTriangle size={13} /> Supprimer le compte
                       </button>
                     )}
                   </div>
@@ -351,11 +358,11 @@ const ForecastSettingsCard = () => {
         detectionDayTolerance: settings.detectionDayTolerance,
       });
       setSettings(data);
-      setMsg('✅ Paramètres sauvegardés');
+      setMsg('saved');
       setTimeout(() => setMsg(''), 3000);
     } catch (err) {
       console.error(err);
-      setMsg('❌ Erreur lors de la sauvegarde');
+      setMsg('error');
     } finally { setSaving(false); }
   };
 
@@ -368,9 +375,10 @@ const ForecastSettingsCard = () => {
       </p>
 
       {msg && (
-        <div className="p-3 mb-4 rounded-xl font-semibold text-sm"
-             style={{ backgroundColor: msg.startsWith('✅') ? 'rgba(39,174,96,0.1)' : 'rgba(255,107,107,0.1)', color: msg.startsWith('✅') ? 'var(--success)' : 'var(--danger)' }}>
-          {msg}
+        <div className="p-3 mb-4 rounded-xl font-semibold text-sm flex items-center gap-2"
+             style={{ backgroundColor: msg === 'saved' ? 'rgba(39,174,96,0.1)' : 'rgba(255,107,107,0.1)', color: msg === 'saved' ? 'var(--success)' : 'var(--danger)' }}>
+          {msg === 'saved' ? <Check size={16}/> : <AlertTriangle size={16}/>}
+          {msg === 'saved' ? 'Paramètres sauvegardés' : 'Erreur lors de la sauvegarde'}
         </div>
       )}
 

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
+import { Pencil, Trash2, X, Check, Plus, Check as CheckIcon, Circle, FileText, ArrowLeftRight } from 'lucide-react';
 import api from '../api';
 import Card from '../components/Card';
+import CategoryBadge from '../components/CategoryBadge';
 import useStore from '../store';
 
 const formatCurrency = (amount) =>
@@ -170,13 +172,15 @@ const Transactions = () => {
               onClick={() => togglePointed(tx)}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
-                fontSize: '1.2rem', padding: '0 4px',
+                padding: '2px', borderRadius: '50%',
                 color: tx.isPointed ? 'var(--success)' : 'var(--border-light)',
-                transition: 'color 0.2s'
+                transition: 'color 0.2s', display: 'inline-flex'
               }}
               title={tx.isPointed ? 'Dépointer' : 'Pointer'}
             >
-              {tx.isPointed ? '✓' : '○'}
+              {tx.isPointed
+                ? <CheckIcon size={16} strokeWidth={2.5} />
+                : <Circle size={16} strokeWidth={1.5} />}
             </button>
           </td>
 
@@ -193,10 +197,30 @@ const Transactions = () => {
             {isEditing
               ? <input type="text" className="tx-input" value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} />
               : (
-                <div>
-                  <div className="font-semibold" style={{ fontSize: '0.9rem' }}>{tx.description}</div>
-                  {tx.notes && <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>📝 {tx.notes}</div>}
-                  {tx.type === 'TRANSFER' && <span className="badge badge-info" style={{ fontSize: '0.68rem', marginTop: '2px' }}>Virement interne</span>}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.35rem' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="font-semibold" style={{ fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '280px' }}>
+                      {tx.description}
+                    </div>
+                    {tx.notes && <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><FileText size={11} />{tx.notes}</div>}
+                    {tx.type === 'TRANSFER' && <span className="badge badge-info" style={{ fontSize: '0.68rem', marginTop: '2px', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}><ArrowLeftRight size={10} />Virement interne</span>}
+                  </div>
+                  {tx.rawDescription && tx.rawDescription !== tx.description && (
+                    <div style={{ position: 'relative' }}>
+                      <button
+                        className="raw-desc-btn"
+                        onMouseEnter={e => { const t = e.currentTarget.nextSibling; if(t) t.style.display='block'; }}
+                        onMouseLeave={e => { const t = e.currentTarget.nextSibling; if(t) t.style.display='none'; }}
+                        title="Voir le libellé brut"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                      </button>
+                      <div className="raw-desc-tooltip" style={{ display: 'none' }}>
+                        <strong style={{ display: 'block', marginBottom: '0.15rem', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Libellé bancaire brut</strong>
+                        {tx.rawDescription}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )
             }
@@ -219,12 +243,7 @@ const Transactions = () => {
                   <option value="">Non catégorisé</option>
                   {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
-              : <span className="tx-category-badge" style={{
-                  backgroundColor: tx.category?.color ? `${tx.category.color}18` : 'var(--bg-app)',
-                  color: tx.category?.color || 'var(--text-muted)',
-                }}>
-                  {tx.category?.name || '—'}
-                </span>
+              : <CategoryBadge category={tx.category} />
             }
           </td>
 
@@ -243,20 +262,19 @@ const Transactions = () => {
           <td style={{ textAlign: 'center' }}>
             {isEditing ? (
               <div className="flex gap-1" style={{ justifyContent: 'center' }}>
-                <button className="tx-action-confirm-btn" title="Enregistrer" onClick={() => saveEdit(tx.id)}
-                  style={{ background: 'var(--success)', color: '#fff' }}>✓</button>
-                <button className="tx-action-btn" title="Annuler" onClick={cancelEdit}>✕</button>
+                <button className="icon-btn success" title="Enregistrer" onClick={() => saveEdit(tx.id)}><Check size={14} /></button>
+                <button className="icon-btn" title="Annuler" onClick={cancelEdit}><X size={14} /></button>
               </div>
             ) : isDeleting ? (
               <div className="flex gap-1" style={{ justifyContent: 'center' }}>
                 <button className="tx-action-confirm-btn" title="Confirmer" onClick={() => confirmDelete(tx.id)}
-                  style={{ background: 'var(--danger)', color: '#fff' }}>Confirmer</button>
-                <button className="tx-action-btn" title="Annuler" onClick={() => setDeletingId(null)}>✕</button>
+                  style={{ background: 'var(--danger)', color: '#fff', padding: '0.3rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Confirmer</button>
+                <button className="icon-btn" title="Annuler" onClick={() => setDeletingId(null)}><X size={14} /></button>
               </div>
             ) : (
               <div className="tx-action-btns">
-                <button className="tx-action-btn" title="Modifier" onClick={() => startEdit(tx)}>✏️</button>
-                <button className="tx-action-btn" title="Supprimer" onClick={() => setDeletingId(tx.id)}>🗑️</button>
+                <button className="icon-btn" title="Modifier" onClick={() => startEdit(tx)}><Pencil size={14} /></button>
+                <button className="icon-btn danger" title="Supprimer" onClick={() => setDeletingId(tx.id)}><Trash2 size={14} /></button>
               </div>
             )}
           </td>
@@ -271,7 +289,7 @@ const Transactions = () => {
       <div className="page-header">
         <h1 className="title" style={{ marginBottom: 0 }}>Transactions ({meta.total})</h1>
         <button className="btn btn-primary" onClick={() => { setShowAddForm(!showAddForm); setEditingId(null); }}>
-          {showAddForm ? '✕ Annuler' : '+ Ajouter'}
+          {showAddForm ? <><X size={16} /> Annuler</> : <><Plus size={16} /> Ajouter</>}
         </button>
       </div>
 
