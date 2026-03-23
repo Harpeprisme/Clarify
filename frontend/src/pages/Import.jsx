@@ -135,7 +135,7 @@ const Import = () => {
 
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-      <h1 className="title">Importer un relevé bancaire CSV</h1>
+      <h1 className="title">Importer un relevé bancaire</h1>
       
       {status.message && (
         <div style={{
@@ -221,7 +221,7 @@ const Import = () => {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".csv,.txt,.tsv"
+              accept=".csv,.txt,.tsv,.xlsx,.xls,.ofx,.qfx,.qif,.pdf"
               onChange={e => handleFileChange(e.target.files[0])}
               style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
               disabled={accounts.length === 0 || isCreatingAccount}
@@ -237,13 +237,16 @@ const Import = () => {
                   {file.name} <span style={{ color: 'var(--text-muted)', fontWeight: 'normal' }}>({(file.size / 1024).toFixed(1)} Ko)</span>
                 </p>
               ) : (
-                <>
-                  <p className="font-semibold" style={{ marginBottom: '0.5rem' }}>Glissez-déposez votre CSV ici</p>
-                  <p className="text-muted" style={{ fontSize: '0.9rem' }}>ou cliquez pour parcourir vos fichiers</p>
-                  <p className="text-muted" style={{ fontSize: '0.8rem', marginTop: '0.75rem' }}>
-                    Compatible : Crédit Agricole, BNP, Société Générale, Boursorama, LCL, Fortuneo, N26, Revolut, Wise…
-                  </p>
-                </>
+                  <>  
+                    <p className="font-semibold" style={{ marginBottom: '0.5rem' }}>Glissez-déposez votre relevé ici</p>
+                    <p className="text-muted" style={{ fontSize: '0.9rem' }}>ou cliquez pour parcourir vos fichiers</p>
+                    <p className="text-muted" style={{ fontSize: '0.78rem', marginTop: '0.75rem' }}>
+                      Compatible&nbsp;CSV, Excel (.xlsx/.xls), OFX/QFX, QIF (Quicken), PDF (avec OCR automatique)
+                    </p>
+                    <p className="text-muted" style={{ fontSize: '0.75rem', marginTop: '0.25rem', opacity: 0.7 }}>
+                      Crédit Agricole · BNP · Société Générale · Boursorama · LCL · Fortuneo · N26 · Revolut · Wise…
+                    </p>
+                  </>
               )}
             </div>
           </div>
@@ -259,23 +262,58 @@ const Import = () => {
             }}>
               <p className="font-semibold mb-2" style={{ fontSize: '0.9rem' }}>
                 🔍 Format détecté automatiquement
+                {detectedFormat.fileType && (
+                  <span style={{ marginLeft: '0.75rem', padding: '0.15rem 0.6rem', borderRadius: '999px', background: 'var(--accent-primary)20', color: 'var(--accent-primary)', fontSize: '0.75rem', fontWeight: 700 }}>
+                    {detectedFormat.fileType}
+                  </span>
+                )}
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem 1.5rem', fontSize: '0.85rem' }}>
-                <div><span className="text-muted">Séparateur : </span><code style={{ backgroundColor: 'var(--bg-surface)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>{detectedFormat.delimiter}</code></div>
-                <div><span className="text-muted">En-têtes sautés : </span><strong>{detectedFormat.skippedHeaderRows}</strong></div>
-                {detectedFormat.dateColumn && <div><span className="text-muted">Colonne date : </span><strong>{detectedFormat.dateColumn}</strong></div>}
-                {detectedFormat.descColumn && <div><span className="text-muted">Colonne libellé : </span><strong>{detectedFormat.descColumn}</strong></div>}
-                {detectedFormat.amountColumn && <div><span className="text-muted">Colonne montant : </span><strong>{detectedFormat.amountColumn}</strong></div>}
-                {detectedFormat.debitColumn && <div><span className="text-muted">Colonne débit : </span><strong>{detectedFormat.debitColumn}</strong></div>}
-                {detectedFormat.creditColumn && <div><span className="text-muted">Colonne crédit : </span><strong>{detectedFormat.creditColumn}</strong></div>}
-              </div>
+
+              {/* CSV specific */}
+              {!detectedFormat.fileType && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem 1.5rem', fontSize: '0.85rem' }}>
+                  {detectedFormat.delimiter && <div><span className="text-muted">Séparateur : </span><code style={{ backgroundColor: 'var(--bg-surface)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>{detectedFormat.delimiter}</code></div>}
+                  {detectedFormat.skippedHeaderRows !== undefined && <div><span className="text-muted">En-têtes sautés : </span><strong>{detectedFormat.skippedHeaderRows}</strong></div>}
+                  {detectedFormat.dateColumn && <div><span className="text-muted">Colonne date : </span><strong>{detectedFormat.dateColumn}</strong></div>}
+                  {detectedFormat.descColumn && <div><span className="text-muted">Colonne libellé : </span><strong>{detectedFormat.descColumn}</strong></div>}
+                  {detectedFormat.amountColumn && <div><span className="text-muted">Colonne montant : </span><strong>{detectedFormat.amountColumn}</strong></div>}
+                  {detectedFormat.debitColumn && <div><span className="text-muted">Colonne débit : </span><strong>{detectedFormat.debitColumn}</strong></div>}
+                  {detectedFormat.creditColumn && <div><span className="text-muted">Colonne crédit : </span><strong>{detectedFormat.creditColumn}</strong></div>}
+                </div>
+              )}
+
+              {/* PDF-specific message */}
+              {detectedFormat.fileType === 'PDF' && (
+                <div style={{ fontSize: '0.85rem' }}>
+                  <p style={{ color: 'var(--text-muted)', marginBottom: '0.25rem' }}>{detectedFormat.description}</p>
+                  {detectedFormat.ocrRequired && (
+                    <p style={{ color: 'var(--accent-secondary, #F59E0B)', fontSize: '0.8rem' }}>
+                      ⏳ OCR activé — la reconnaissance de texte peut prendre 30-60 secondes selon le nombre de pages.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* OFX/QIF description */}
+              {(detectedFormat.fileType === 'OFX/QFX' || detectedFormat.fileType === 'QIF (Quicken)') && (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{detectedFormat.description}</p>
+              )}
+
+              {/* Excel-specific: sheet info */}
+              {(detectedFormat.fileType === 'Excel') && detectedFormat.sheetName && (
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                  Feuille détectée : <strong>{detectedFormat.sheetName}</strong>
+                </p>
+              )}
+
+              {/* Sample rows table (CSV + Excel) */}
               {detectedFormat.sampleRows?.length > 0 && (
                 <div style={{ marginTop: '0.75rem', overflowX: 'auto' }}>
                   <p className="text-muted" style={{ fontSize: '0.8rem', marginBottom: '0.5rem' }}>Aperçu (3 premières lignes)</p>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem', minWidth: '400px' }}>
                     <thead>
                       <tr>
-                        {detectedFormat.columns.filter(c => c.trim()).slice(0, 5).map(col => (
+                        {(detectedFormat.columns || []).filter(c => c.trim()).slice(0, 5).map(col => (
                           <th key={col} style={{ padding: '0.4rem 0.6rem', textAlign: 'left', color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)', whiteSpace: 'nowrap', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{col}</th>
                         ))}
                       </tr>
@@ -283,7 +321,7 @@ const Import = () => {
                     <tbody>
                       {detectedFormat.sampleRows.map((row, i) => (
                         <tr key={i} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                          {detectedFormat.columns.filter(c => c.trim()).slice(0, 5).map(col => (
+                          {(detectedFormat.columns || []).filter(c => c.trim()).slice(0, 5).map(col => (
                             <td key={col} style={{ padding: '0.4rem 0.6rem', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {String(row[col] || '').substring(0, 40)}
                             </td>

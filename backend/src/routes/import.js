@@ -2,19 +2,20 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const prisma = require('../config/prisma');
-const { parseCSV, detectFormat } = require('../services/csvParser');
+const { parseAnyFile, detectFormat } = require('../services/formatRouter');
 const { categorizeTransaction } = require('../services/categorizer');
 const { detectInternalTransfers } = require('../services/transferDetector');
 
-// Configure multer for memory storage (limit: 20MB)
+// Configure multer for memory storage (limit: 30MB — PDFs can be large)
 const upload = multer({ 
   storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 }
+  limits: { fileSize: 30 * 1024 * 1024 }
 });
 
 /**
  * POST /api/import/detect
- * Detect CSV format and return a preview without importing anything.
+ * Detect file format and return a preview without importing anything.
+ * Supports: CSV, Excel, OFX/QFX, QIF, PDF
  */
 router.post('/detect', upload.single('file'), async (req, res, next) => {
   try {
@@ -22,7 +23,7 @@ router.post('/detect', upload.single('file'), async (req, res, next) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const detected = await detectFormat(req.file.buffer);
+    const detected = await detectFormat(req.file.buffer, req.file.originalname);
     res.json(detected);
   } catch (error) {
     next(error);
@@ -31,7 +32,8 @@ router.post('/detect', upload.single('file'), async (req, res, next) => {
 
 /**
  * POST /api/import
- * Full CSV import: parse, categorize, detect transfers, persist.
+ * Full import: auto-detect format, parse, categorize, detect transfers, persist.
+ * Supports: CSV, Excel (.xlsx/.xls), OFX/QFX, QIF (Quicken), PDF (+ OCR)
  */
 router.post('/', upload.single('file'), async (req, res, next) => {
   try {
@@ -52,14 +54,15 @@ router.post('/', upload.single('file'), async (req, res, next) => {
       return res.status(404).json({ error: 'Compte introuvable ou accès refusé' });
     }
 
-    // Parse CSV — pass buffer directly for encoding auto-detection
-    const rows = await parseCSV(req.file.buffer);
+    // Parse any supported format — auto-detect from extension + magic bytes
+    const rows = await parseAnyFile(req.file.buffer, req.file.originalname);
 
     if (rows.length === 0) {
       return res.status(400).json({ 
-        error: 'Aucune transaction trouvée dans ce fichier. Vérifiez le format du CSV (colonnes Date, Libellé, Montant attendus).' 
+        error: 'Aucune transaction trouvée dans ce fichier. Vérifiez le format (colonnes Date, Libellé, Montant attendus).' 
       });
     }
+
 
     let importedCount = 0;
     let skippedCount = 0;
